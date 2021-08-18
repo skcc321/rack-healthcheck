@@ -4,21 +4,20 @@ require "rack/healthcheck/type"
 module Rack
   module Healthcheck
     module Checks
-      class Redis < Base
+      class Twilio < Base
         attr_reader :config
 
         # @param name [String]
         # @param config [Hash<Symbol,String>] Hash with configs
         # @param optional [Boolean] Flag used to inform if this service is optional
         # @example
-        # name = Redis
+        # name = Twilio
         # config = {
-        #   url: "redis://localhost:6379",
-        #   password: "pass",
-        #   optional: true
+        #   :account_sid,
+        #   :auth_token
         # }
-        def initialize(name, config)
-          super(name, Rack::Healthcheck::Type::CACHE, config[:optional], config[:url])
+        def initialize(name, config = {})
+          super(name, Rack::Healthcheck::Type::EXTERNAL_SERVICE, config[:optional], config[:url])
           @config = config
         end
 
@@ -26,8 +25,8 @@ module Rack
 
         def check
           catch_status do
-            redis = ::Redis.new(config)
-            redis.info
+            client = ::Twilio::REST::Client.new config[:account_sid], config[:auth_token]
+            client.messages.list(limit: 1)
           end
         end
       end

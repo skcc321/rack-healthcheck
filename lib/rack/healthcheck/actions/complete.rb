@@ -5,6 +5,11 @@ require "rack/healthcheck/checks/mongo_db"
 require "rack/healthcheck/checks/rabbit_mq"
 require "rack/healthcheck/checks/redis"
 require "rack/healthcheck/checks/http_request"
+require "rack/healthcheck/checks/one_signal"
+require "rack/healthcheck/checks/pusher"
+require "rack/healthcheck/checks/twilio"
+require "rack/healthcheck/checks/mailgunner"
+require "rack/healthcheck/checks/carrierwave"
 
 module Rack
   module Healthcheck

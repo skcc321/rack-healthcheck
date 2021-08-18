@@ -5,7 +5,7 @@ module Rack
         class InvalidType < RuntimeError; end
 
         attr_accessor :name, :optional, :url
-        attr_reader :type, :status, :elapsed_time
+        attr_reader :type, :status, :elapsed_time, :details
 
         def initialize(name, type, optional, url)
           unless Rack::Healthcheck::Type::ALL.include?(type)
@@ -16,6 +16,7 @@ module Rack
           @optional = optional || false
           @url = url
           @type = type
+          @details = nil
         end
 
         def run
@@ -31,7 +32,8 @@ module Rack
             status: status,
             optional: optional,
             time: elapsed_time,
-            url: url
+            url: url,
+            details: details
           }.reject { |_key, value| value.nil? }
         end
 
@@ -42,6 +44,14 @@ module Rack
         private
 
         def check; end
+
+        def catch_status
+          yield
+          @status = true
+        rescue StandardError => error
+          @details = error.message.split("\n").first
+          @status = false
+        end
       end
     end
   end

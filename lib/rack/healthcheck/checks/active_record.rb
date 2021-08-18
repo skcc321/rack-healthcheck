@@ -11,7 +11,8 @@ module Rack
         # name = Database
         # config {
         #   optional: false,
-        #   url: "mydatabase.com"
+        #   url: "mydatabase.com",
+        #   connected_to: { role: :primary }
         # }
         def initialize(name, config = {})
           super(name, Rack::Healthcheck::Type::DATABASE, config[:optional], config[:url])
@@ -20,10 +21,15 @@ module Rack
         private
 
         def check
-          ::ActiveRecord::Migrator.current_version
-          @status = true
-        rescue StandardError => _
-          @status = false
+          catch_status do
+            if config.key?(:connected_to)
+              ActiveRecord::Base.connected_to(config[:connected_to]) do
+                ::ApplicationRecord.connection.select_value('SELECT 1') == 1
+              end
+            else
+              ::ApplicationRecord.connection.select_value('SELECT 1') == 1
+            end
+          end
         end
       end
     end

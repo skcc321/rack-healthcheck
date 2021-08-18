@@ -4,21 +4,20 @@ require "rack/healthcheck/type"
 module Rack
   module Healthcheck
     module Checks
-      class Redis < Base
+      class Mailgunner < Base
         attr_reader :config
 
         # @param name [String]
         # @param config [Hash<Symbol,String>] Hash with configs
         # @param optional [Boolean] Flag used to inform if this service is optional
         # @example
-        # name = Redis
+        # name = Mailgunner
         # config = {
-        #   url: "redis://localhost:6379",
-        #   password: "pass",
-        #   optional: true
+        #   :domain,
+        #   :api_key
         # }
-        def initialize(name, config)
-          super(name, Rack::Healthcheck::Type::CACHE, config[:optional], config[:url])
+        def initialize(name, config = {})
+          super(name, Rack::Healthcheck::Type::EXTERNAL_SERVICE, config[:optional], config[:url])
           @config = config
         end
 
@@ -26,8 +25,8 @@ module Rack
 
         def check
           catch_status do
-            redis = ::Redis.new(config)
-            redis.info
+            mailgun = ::Mailgunner::Client.new(domain: config[:domain], api_key: config[:api_key])
+            mailgun.get_domains
           end
         end
       end

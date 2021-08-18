@@ -4,21 +4,19 @@ require "rack/healthcheck/type"
 module Rack
   module Healthcheck
     module Checks
-      class Redis < Base
+      class OneSignal < Base
         attr_reader :config
 
         # @param name [String]
         # @param config [Hash<Symbol,String>] Hash with configs
         # @param optional [Boolean] Flag used to inform if this service is optional
         # @example
-        # name = Redis
+        # name = OneSignal
         # config = {
-        #   url: "redis://localhost:6379",
-        #   password: "pass",
-        #   optional: true
+        #   app_id: "one signal app id",
         # }
         def initialize(name, config)
-          super(name, Rack::Healthcheck::Type::CACHE, config[:optional], config[:url])
+          super(name, Rack::Healthcheck::Type::EXTERNAL_SERVICE, config[:optional], config[:url])
           @config = config
         end
 
@@ -26,8 +24,7 @@ module Rack
 
         def check
           catch_status do
-            redis = ::Redis.new(config)
-            redis.info
+            ::OneSignal::App.get(id: config[:app_id])
           end
         end
       end

@@ -26,12 +26,11 @@ module Rack
         private
 
         def check
-          connection = Bunny.new(config)
-          connection.start
-          connection.close
-          @status = true
-        rescue StandardError => _
-          @status = false
+          catch_status do
+            connection = Bunny.new(config)
+            connection.start
+            connection.close
+          end
         end
       end
     end

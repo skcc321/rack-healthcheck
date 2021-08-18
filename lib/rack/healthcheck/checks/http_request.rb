@@ -17,7 +17,6 @@ module Rack
         # name = Ceph or Another system
         # config = {
         #   url: localhost,
-        #   headers: {"Host" => "something"},
         #   service_type: "INTERNAL_SERVICE",
         #   expected_result: "LIVE",
         #   optional: true
@@ -33,12 +32,12 @@ module Rack
         private
 
         def check
-          uri = URI(url)
-          http = Net::HTTP.new(uri.host)
-          response = http.get(uri.path, config[:headers])
-          @status = response.body.delete("\n") == config[:expected_result]
-        rescue StandardError => _
-          @status = false
+          catch_status do
+            uri = URI(url)
+            response = Net::HTTP.get_response(uri)
+            response.body.delete("\n") == config[:expected_result] ||
+              raise("Response body does not match expected: #{response.body} <> #{config[:expected_result]}")
+          end
         end
       end
     end

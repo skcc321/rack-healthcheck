@@ -4,21 +4,19 @@ require "rack/healthcheck/type"
 module Rack
   module Healthcheck
     module Checks
-      class Redis < Base
+      class OhPipe < Base
         attr_reader :config
 
         # @param name [String]
         # @param config [Hash<Symbol,String>] Hash with configs
         # @param optional [Boolean] Flag used to inform if this service is optional
         # @example
-        # name = Redis
+        # name = OhPipe
         # config = {
-        #   url: "redis://localhost:6379",
-        #   password: "pass",
-        #   optional: true
+        #   queue_name: "tracking",
         # }
         def initialize(name, config)
-          super(name, Rack::Healthcheck::Type::CACHE, config[:optional], config[:url])
+          super(name, Rack::Healthcheck::Type::MESSAGING, config[:optional], config[:url])
           @config = config
         end
 

@@ -20,10 +20,9 @@ module Rack
         private
 
         def check
-          Mongoid::Sessions.with_name(:default).command(dbStats: 1)["db"]
-          @status = true
-        rescue StandardError => _
-          @status = false
+          catch_status do
+            Mongoid::Sessions.with_name(:default).command(dbStats: 1)["db"]
+          end
         end
       end
     end
