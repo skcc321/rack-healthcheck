@@ -24,10 +24,10 @@ module Rack
           catch_status do
             if config.key?(:connected_to)
               ActiveRecord::Base.connected_to(config[:connected_to]) do
-                ::ApplicationRecord.connection.select_value('SELECT 1') == 1
+                ::ApplicationRecord.connection.select_value('SELECT 1 + 1')
               end
             else
-              ::ApplicationRecord.connection.select_value('SELECT 1') == 1
+              ::ApplicationRecord.connection.select_value('SELECT 1 + 1')
             end
           end
         end

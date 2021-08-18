@@ -4,19 +4,18 @@ require "rack/healthcheck/type"
 module Rack
   module Healthcheck
     module Checks
-      class Sequel < Base
+      class Geocoder < Base
         attr_reader :config
 
         # @param name [String]
-        # @param config [Hash<Symbol, Object>] Hash with optional configs
+        # @param config [Hash<Symbol,String>] Hash with configs
+        # @param optional [Boolean] Flag used to inform if this service is optional
         # @example
-        # name = Database
-        # config {
-        #   optional: false,
-        #   url: "mydatabase.com",
+        # name = Geocoder
+        # config = {
         # }
         def initialize(name, config = {})
-          super(name, Rack::Healthcheck::Type::DATABASE, config[:optional], config[:url])
+          super(name, Rack::Healthcheck::Type::EXTERNAL_SERVICE, config[:optional], config[:url])
           @config = config
         end
 
@@ -24,9 +23,7 @@ module Rack
 
         def check
           catch_status do
-            ::Sequel.connect(config[:url]) do |db|
-              db.get("1 + 1")
-            end
+            ::Geocoder::Lookup.get(config[:lookup]).search("Kyiv, Ukraine")
           end
         end
       end

@@ -5,6 +5,8 @@ module Rack
   module Healthcheck
     module Checks
       class MongoDB < Base
+        attr_reader :config
+
         # @param name [String]
         # @param config [Hash<Symbol, Object>] Hash with optional configs
         # @example
@@ -15,13 +17,14 @@ module Rack
         # }
         def initialize(name, config = {})
           super(name, Rack::Healthcheck::Type::DATABASE, config[:optional], config[:url])
+          @config = config
         end
 
         private
 
         def check
           catch_status do
-            Mongoid::Sessions.with_name(:default).command(dbStats: 1)["db"]
+            Mongoid.client(config[:name]).command(dbStats: 1)
           end
         end
       end
