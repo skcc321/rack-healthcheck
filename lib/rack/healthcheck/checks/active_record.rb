@@ -5,6 +5,7 @@ module Rack
   module Healthcheck
     module Checks
       class ActiveRecord < Base
+        attr_reader :config
         # @param name [String]
         # @param config [Hash<Symbol, Object>] Hash with optional configs
         # @example
@@ -16,6 +17,7 @@ module Rack
         # }
         def initialize(name, config = {})
           super(name, Rack::Healthcheck::Type::DATABASE, config[:optional], config[:url])
+          @config = config
         end
 
         private
