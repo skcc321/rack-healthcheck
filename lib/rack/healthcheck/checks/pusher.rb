@@ -13,6 +13,10 @@ module Rack
         # @example
         # name = Pusher
         # config = {
+        #   :app_id,
+        #   :key,
+        #   :secret,
+        #   :cluster
         # }
         def initialize(name, config = {})
           super(name, Rack::Healthcheck::Type::EXTERNAL_SERVICE, config[:optional], config[:url])
@@ -22,8 +26,15 @@ module Rack
         private
 
         def check
-          catch_status do
-            ::Pusher.get("/channels")
+          super do
+            pusher = ::Pusher::Client.new(
+              app_id: config[:app_id],
+              key: config[:key],
+              secret: config[:secret],
+              cluster: config[:cluster],
+              use_tls: true
+            )
+            pusher.get("/channels")
           end
         end
       end

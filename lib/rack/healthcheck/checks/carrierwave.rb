@@ -24,7 +24,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             config[:uploader].store!(config[:file])
             config[:uploader].retrieve_from_store!(config[:uploader].filename)
             config[:uploader].file.read

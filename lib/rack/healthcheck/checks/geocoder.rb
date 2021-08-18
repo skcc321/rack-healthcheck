@@ -22,7 +22,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             ::Geocoder::Lookup.get(config[:lookup]).search("Kyiv, Ukraine")
           end
         end

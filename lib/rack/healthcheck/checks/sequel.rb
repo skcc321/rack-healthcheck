@@ -23,7 +23,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             ::Sequel.connect(config[:url]) do |db|
               db.get("1 + 1")
             end

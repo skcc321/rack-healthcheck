@@ -32,11 +32,13 @@ module Rack
         private
 
         def check
-          catch_status do
-            uri = URI(url)
-            response = Net::HTTP.get_response(uri)
-            response.body.delete("\n") == config[:expected_result] ||
-              raise("Response body does not match expected: #{response.body} <> #{config[:expected_result]}")
+          super do
+            response = http_get(url)
+            if config[:expected_result].is_a?(Regexp)
+              config[:expected_result].match(response)
+            else
+              response == config[:expected_result]
+            end || raise("Response body does not match: #{response} <> #{config[:expected_result]}")
           end
         end
       end

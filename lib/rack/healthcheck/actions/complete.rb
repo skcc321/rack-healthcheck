@@ -13,6 +13,9 @@ require "rack/healthcheck/checks/mailgunner"
 require "rack/healthcheck/checks/carrierwave"
 require "rack/healthcheck/checks/oh_pipe"
 require "rack/healthcheck/checks/geocoder"
+require "rack/healthcheck/checks/chewy"
+require "rack/healthcheck/checks/flightaware"
+require "rack/healthcheck/checks/marinetraffic"
 
 module Rack
   module Healthcheck

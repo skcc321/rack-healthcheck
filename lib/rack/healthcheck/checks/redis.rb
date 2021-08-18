@@ -25,7 +25,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             redis = ::Redis.new(config)
             redis.info
           end

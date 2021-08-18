@@ -50,15 +50,33 @@ module Rack
             url.gsub(r) { |m| m.gsub($1, "[FILTERED CREDENTIALS]") }
           end
 
-        def check; end
+          def check
+            yield
+            @status = true
+          rescue StandardError => error
+            @details = error.message.split("\n").first
+            @status = false
+          end
 
-        def catch_status
-          yield
-          @status = true
-        rescue StandardError => error
-          @details = error.message.split("\n").first
-          @status = false
-        end
+          def http_get(uri_str, limit = 3)
+            raise ArgumentError, "too many HTTP redirects" if limit == 0
+
+            response = Net::HTTP.get_response(URI(uri_str))
+
+            case response
+            when Net::HTTPSuccess, Net::HTTPOK then
+              response.body
+            when Net::HTTPRedirection then
+              location = response["location"]
+              # warn "redirected to #{location}"
+              http_get(location, limit - 1)
+            else
+              response.value
+            end
+          rescue Net::HTTPServerException
+            # return empty response when raise exception
+            "{}"
+          end
       end
     end
   end

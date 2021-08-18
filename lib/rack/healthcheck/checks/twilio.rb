@@ -24,7 +24,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             client = ::Twilio::REST::Client.new config[:account_sid], config[:auth_token]
             client.messages.list(limit: 1)
           end

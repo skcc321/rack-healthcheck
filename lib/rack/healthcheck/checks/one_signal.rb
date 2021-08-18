@@ -23,7 +23,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             ::OneSignal::App.get(id: config[:app_id])
           end
         end

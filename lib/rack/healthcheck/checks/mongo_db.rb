@@ -23,7 +23,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             Mongoid.client(config[:name]).command(dbStats: 1)
           end
         end

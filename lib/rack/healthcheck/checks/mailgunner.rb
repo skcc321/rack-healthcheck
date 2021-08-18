@@ -24,7 +24,7 @@ module Rack
         private
 
         def check
-          catch_status do
+          super do
             mailgun = ::Mailgunner::Client.new(domain: config[:domain], api_key: config[:api_key])
             mailgun.get_domains
           end
