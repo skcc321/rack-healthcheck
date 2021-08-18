@@ -1,6 +1,7 @@
 require "json"
 require "rack/healthcheck/actions/base"
 require "rack/healthcheck/checks/active_record"
+require "rack/healthcheck/checks/sequel"
 require "rack/healthcheck/checks/mongo_db"
 require "rack/healthcheck/checks/rabbit_mq"
 require "rack/healthcheck/checks/redis"
