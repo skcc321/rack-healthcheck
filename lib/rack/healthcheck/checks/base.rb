@@ -32,7 +32,7 @@ module Rack
             status: status,
             optional: optional,
             time: elapsed_time,
-            url: sanitize(url),
+            url: sanitized_url,
             details: details
           }.reject { |_key, value| value.nil? }
         end
@@ -43,7 +43,7 @@ module Rack
 
         private
 
-          def sanitize(url)
+          def sanitized_url
             return unless url
 
             r = /\:\/\/(.*:.*)@/ # ://(usernam:password)@ regexp
