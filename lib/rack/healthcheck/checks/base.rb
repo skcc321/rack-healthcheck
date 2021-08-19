@@ -73,9 +73,6 @@ module Rack
             else
               response.value
             end
-          rescue Net::HTTPServerException
-            # return empty response when raise exception
-            "{}"
           end
       end
     end
