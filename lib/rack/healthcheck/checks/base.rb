@@ -1,7 +1,11 @@
+# frozen_string_literal: true
+
 module Rack
   module Healthcheck
     module Checks
       class Base
+        TIMEOUT = 5
+
         class InvalidType < RuntimeError; end
 
         attr_accessor :name, :optional, :url
@@ -43,37 +47,47 @@ module Rack
 
         private
 
-          def sanitized_url
-            return unless url
+        def sanitized_url
+          return unless url
 
-            r = /\:\/\/(.*:.*)@/ # ://(usernam:password)@ regexp
-            url.gsub(r) { |m| m.gsub($1, "[FILTERED CREDENTIALS]") }
+          r = %r{://(.*:.*)@} # ://(usernam:password)@ regexp
+          url.gsub(r) { |m| m.gsub(Regexp.last_match(1), "[FILTERED CREDENTIALS]") }
+        end
+
+        def check
+          yield
+          @status = true
+        rescue StandardError => e
+          @details = e.message.split("\n").first
+          @status = false
+        end
+
+        def http_get(url, limit = 3)
+          raise ArgumentError, "too many HTTP redirects" if limit.zero?
+
+          uri = URI.parse(url)
+          request = Net::HTTP::Get.new(uri)
+
+          options = {
+            use_ssl: uri.scheme == "https",
+            open_timeout: TIMEOUT,
+            read_timeout: TIMEOUT
+          }
+
+          # setting both OpenTimeout and ReadTimeout
+          response = Net::HTTP.start(uri.host, uri.port, options) do |http|
+            http.request(request)
           end
 
-          def check
-            yield
-            @status = true
-          rescue StandardError => error
-            @details = error.message.split("\n").first
-            @status = false
+          case response
+          when Net::HTTPSuccess, Net::HTTPOK
+            response.body
+          when Net::HTTPRedirection, Net::HTTPMovedPermanently
+            http_get(response["location"], limit - 1)
+          else
+            response.value
           end
-
-          def http_get(uri_str, limit = 3)
-            raise ArgumentError, "too many HTTP redirects" if limit == 0
-
-            response = Net::HTTP.get_response(URI(uri_str))
-
-            case response
-            when Net::HTTPSuccess, Net::HTTPOK then
-              response.body
-            when Net::HTTPRedirection then
-              location = response["location"]
-              # warn "redirected to #{location}"
-              http_get(location, limit - 1)
-            else
-              response.value
-            end
-          end
+        end
       end
     end
   end

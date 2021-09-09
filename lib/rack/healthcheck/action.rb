@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rack/healthcheck/actions/load_balancer"
 require "rack/healthcheck/actions/complete"
 

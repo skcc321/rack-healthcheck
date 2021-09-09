@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rack/healthcheck/version"
 require "rack/healthcheck/middleware"
 require "rack/healthcheck/configuration"

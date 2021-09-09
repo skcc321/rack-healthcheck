@@ -1,25 +1,12 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 require "rack/healthcheck/type"
+require "bunny"
 
 describe Rack::Healthcheck::Checks::RabbitMQ do
-  class Bunny
-    def initialize(url); end
-
-    def start; end
-
-    def close; end
-  end
-
-  let(:config) do
-    {
-      hosts: ["localhost"],
-      port: 5672,
-      user: "guest",
-      pass: "guest"
-    }
-  end
-
-  let(:rabbit_check) { described_class.new("name", config) }
+  let(:rabbit_check) { described_class.new("name", {}) }
+  let(:connection) { double(start: true, close: true) }
 
   describe ".new" do
     it "sets type as MESSAGING" do
@@ -29,6 +16,10 @@ describe Rack::Healthcheck::Checks::RabbitMQ do
 
   describe "#run" do
     subject(:run_it) { rabbit_check.run }
+
+    before do
+      allow(Bunny).to receive(:new).with(any_args).and_return(connection)
+    end
 
     context "when rabbit server is available" do
       it "sets status to true" do
@@ -40,7 +31,7 @@ describe Rack::Healthcheck::Checks::RabbitMQ do
 
     context "when rabbit server is down" do
       before do
-        allow_any_instance_of(Bunny).to receive(:start).and_raise(StandardError)
+        allow(connection).to receive(:start).and_raise(Bunny::AuthenticationFailureError)
       end
 
       it "sets status to false" do

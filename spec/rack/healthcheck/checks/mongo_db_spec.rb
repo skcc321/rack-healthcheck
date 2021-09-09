@@ -1,10 +1,8 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 require "rack/healthcheck/type"
-
-module Mongoid
-  class Sessions
-  end
-end
+require "mongoid"
 
 describe Rack::Healthcheck::Checks::MongoDB do
   let(:mongo_check) { described_class.new("name") }
@@ -19,11 +17,10 @@ describe Rack::Healthcheck::Checks::MongoDB do
     subject(:run_it) { mongo_check.run }
 
     context "when database is up" do
-      let(:connection) { double }
+      let(:connection) { double("mongoid::connection", command: "OK") }
 
       before do
-        allow(connection).to receive(:command) { { "db" => "test" } }
-        allow(Mongoid::Sessions).to receive(:with_name).with(any_args) { connection }
+        allow(Mongoid).to receive(:client).with(any_args) { connection }
       end
 
       it "sets status to true" do
@@ -35,7 +32,7 @@ describe Rack::Healthcheck::Checks::MongoDB do
 
     context "when database is down" do
       before do
-        allow(Mongoid::Sessions).to receive(:with_name).and_raise(StandardError)
+        allow(Mongoid).to receive(:client).and_raise(StandardError)
       end
 
       it "sets status to false" do

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rack
   module Healthcheck
     # This class is responsible by keep all services that the healthcheck needs to verify

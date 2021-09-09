@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rack/healthcheck/action"
 
 module Rack

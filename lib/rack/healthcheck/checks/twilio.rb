@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rack/healthcheck/checks/base"
 require "rack/healthcheck/type"
 

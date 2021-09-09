@@ -1,13 +1,12 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 require "rack/healthcheck/type"
-
-module ActiveRecord
-  class Migrator
-  end
-end
+require "active_record"
 
 describe Rack::Healthcheck::Checks::ActiveRecord do
   let(:active_record_check) { described_class.new("name") }
+  let(:connection_pool) { double("ARconnectionPool", select_value: "2") }
 
   describe ".new" do
     it "sets type as DATABASE" do
@@ -20,7 +19,7 @@ describe Rack::Healthcheck::Checks::ActiveRecord do
 
     context "when database is up" do
       before do
-        allow(ActiveRecord::Migrator).to receive(:current_version) { "1" }
+        allow(ActiveRecord::Base).to receive(:connection).and_return(connection_pool)
       end
 
       it "sets status to true" do
@@ -32,7 +31,8 @@ describe Rack::Healthcheck::Checks::ActiveRecord do
 
     context "when database is down" do
       before do
-        allow(ActiveRecord::Migrator).to receive(:current_version).and_raise(StandardError)
+        allow(ActiveRecord::Base).to receive(:connection)
+          .and_raise(ActiveRecord::ConnectionNotEstablished)
       end
 
       it "sets status to false" do
