@@ -1,20 +1,12 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 require "rack/healthcheck/type"
+require "redis"
 
 describe Rack::Healthcheck::Checks::Redis do
-  class Redis
-    def initialize(config); end
-
-    def info; end
-  end
-
-  let(:config) do
-    {
-      url: "localhost",
-      password: 6379
-    }
-  end
-  let(:redis_check) { described_class.new("name", config) }
+  let(:redis_check) { described_class.new("name", {}) }
+  let(:connection) { double(info: true) }
 
   describe ".new" do
     it "sets type as CACHE" do
@@ -24,6 +16,10 @@ describe Rack::Healthcheck::Checks::Redis do
 
   describe "#run" do
     subject(:run_it) { redis_check.run }
+
+    before do
+      allow(Redis).to receive(:new).with(any_args).and_return(connection)
+    end
 
     context "when redis server is available" do
       it "sets status to true" do
@@ -35,7 +31,7 @@ describe Rack::Healthcheck::Checks::Redis do
 
     context "when redis server is down" do
       before do
-        allow_any_instance_of(Redis).to receive(:info).and_raise(StandardError)
+        allow(connection).to receive(:info).and_raise(StandardError)
       end
 
       it "sets status to false" do

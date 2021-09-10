@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "json"
 require "rack/healthcheck/actions/base"
 require "rack/healthcheck/checks/active_record"
@@ -10,7 +12,6 @@ require "rack/healthcheck/checks/one_signal"
 require "rack/healthcheck/checks/pusher"
 require "rack/healthcheck/checks/twilio"
 require "rack/healthcheck/checks/mailgunner"
-require "rack/healthcheck/checks/carrierwave"
 require "rack/healthcheck/checks/oh_pipe"
 require "rack/healthcheck/checks/geocoder"
 require "rack/healthcheck/checks/elasticsearch"

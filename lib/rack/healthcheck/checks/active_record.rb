@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rack/healthcheck/checks/base"
 require "rack/healthcheck/type"
 
@@ -6,6 +8,7 @@ module Rack
     module Checks
       class ActiveRecord < Base
         attr_reader :config
+
         # @param name [String]
         # @param config [Hash<Symbol, Object>] Hash with optional configs
         # @example
@@ -26,10 +29,10 @@ module Rack
           super do
             if config.key?(:connected_to)
               ::ActiveRecord::Base.connected_to(config[:connected_to]) do
-                ::ApplicationRecord.connection.select_value('SELECT 1 + 1')
+                ::ActiveRecord::Base.connection.select_value("SELECT 1 + 1")
               end
             else
-              ::ApplicationRecord.connection.select_value('SELECT 1 + 1')
+              ::ActiveRecord::Base.connection.select_value("SELECT 1 + 1")
             end
           end
         end

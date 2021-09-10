@@ -1,4 +1,8 @@
+# frozen_string_literal: true
+
 require "spec_helper"
+require "active_record"
+require "redis"
 
 describe Rack::Healthcheck::Actions::Complete do
   let(:path) { "/healthcheck" }
@@ -11,6 +15,7 @@ describe Rack::Healthcheck::Actions::Complete do
       status: false,
       version: 1.0,
       checks: [{
+        details: "No connection pool for 'ActiveRecord::Base' found.",
         name: "database",
         type: "DATABASE",
         status: false,

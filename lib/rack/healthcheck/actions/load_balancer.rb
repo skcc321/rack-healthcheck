@@ -1,11 +1,13 @@
+# frozen_string_literal: true
+
 require "rack/healthcheck/actions/base"
 
 module Rack
   module Healthcheck
     module Actions
       class LoadBalancer < Base
-        LIVE = "LIVE".freeze
-        DEAD = "DEAD".freeze
+        LIVE = "LIVE"
+        DEAD = "DEAD"
         VALID_REQUEST_METHODS = %i[get post delete].freeze
 
         @status = LIVE

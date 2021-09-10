@@ -1,14 +1,16 @@
+# frozen_string_literal: true
+
 module Rack
   module Healthcheck
     class Type
       ALL = [
-        CACHE             = "CACHE".freeze,
-        EXTERNAL_SERVICE  = "EXTERNAL_SERVICE".freeze,
-        INTERNAL_SERVICE  = "INTERNAL_SERVICE".freeze,
-        STORAGE           = "STORAGE".freeze,
-        MESSAGING         = "MESSAGING".freeze,
-        DATABASE          = "DATABASE".freeze,
-        FILE              = "FILE".freeze
+        CACHE             = "CACHE",
+        EXTERNAL_SERVICE  = "EXTERNAL_SERVICE",
+        INTERNAL_SERVICE  = "INTERNAL_SERVICE",
+        STORAGE           = "STORAGE",
+        MESSAGING         = "MESSAGING",
+        DATABASE          = "DATABASE",
+        FILE              = "FILE"
       ].freeze
     end
   end

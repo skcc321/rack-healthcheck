@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 require "rack/healthcheck/type"
 
@@ -20,15 +22,16 @@ describe Rack::Healthcheck::Checks::HTTPRequest do
   describe "#run" do
     subject(:run_it) { http_request_check.run }
 
-    let(:response) { double(:response, body: body) }
+    let(:response) { Net::HTTPSuccess.new(1.0, "200", "OK") }
     let(:body) { "LIVE" }
 
     before(:each) do
-      allow_any_instance_of(Net::HTTP).to receive(:get).with(any_args) { response }
+      allow_any_instance_of(Net::HTTP).to receive(:start).with(any_args) { response }
     end
 
     context "when server is available and returns the expected result" do
       it "sets status to true" do
+        allow(response).to receive(:body).and_return(body)
         run_it
 
         expect(http_request_check.status).to be_truthy
