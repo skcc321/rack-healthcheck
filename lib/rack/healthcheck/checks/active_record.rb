@@ -28,7 +28,7 @@ module Rack
         def check
           super do
             if config.key?(:connected_to)
-              ::ActiveRecord::Base.connected_to(config[:connected_to]) do
+              ::ActiveRecord::Base.connected_to(**config[:connected_to]) do
                 ::ActiveRecord::Base.connection.select_value("SELECT 1 + 1")
               end
             else
