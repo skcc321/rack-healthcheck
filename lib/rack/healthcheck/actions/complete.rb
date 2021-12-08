@@ -25,14 +25,18 @@ module Rack
       class Complete < Base
         def get
           perform
-          ["200", { "Content-Type" => "application/json" }, [result.to_json]]
+
+          body = result
+          status = body[:status] ? "200" : "503"
+
+          [status, { "Content-Type" => "application/json" }, [body.to_json]]
         end
 
         private
 
         def result
           results = []
-          status  = true
+          status = true
           Rack::Healthcheck.configuration.checks.each do |check|
             status = (status == true && check.keep_in_pool?)
             results << check.to_hash
