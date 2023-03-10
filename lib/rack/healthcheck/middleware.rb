@@ -11,12 +11,14 @@ module Rack
       end
 
       def call(env)
-        path = env["PATH_INFO"]
-        request_method = env["REQUEST_METHOD"]
+        begin
+          path = env["PATH_INFO"]
+          request_method = env["REQUEST_METHOD"]
 
-        action = Rack::Healthcheck::Action.get(path, request_method)
-        action.send(request_method.downcase)
-      rescue Rack::Healthcheck::Action::InvalidAction, Rack::Healthcheck::Actions::Base::InvalidRequestMethod
+          action = Rack::Healthcheck::Action.get(path, request_method)
+          return action.send(request_method.downcase)
+        rescue Rack::Healthcheck::Action::InvalidAction, Rack::Healthcheck::Actions::Base::InvalidRequestMethod
+        end
         @app.call(env)
       end
     end
