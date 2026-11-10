@@ -6,7 +6,7 @@ require "pry"
 require "timecop"
 
 SimpleCov.start do
-  add_filter "/spec"
+  skip "/spec"
 end
 
 require "rack/healthcheck"

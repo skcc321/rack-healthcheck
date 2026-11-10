@@ -2,17 +2,19 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: circleci/ruby:2.5.3
+      - image: cimg/ruby:3.4.12
     environment:
       - CC_TEST_REPORTER_ID: af1d9f6682174286b1e088c76e70d86f889270e130a678001ec2cd586ce9ce2f
     steps:
       - checkout
       - run:
           name: Install dependencies
-          command: bundle install
+          command: |
+            gem install bundler --version 4.0.24
+            bundle _4.0.24_ install
       - run:
           name: Rubocop
-          command: rubocop -D
+          command: bundle exec rubocop -D
       - run:
           name: Setup Code Climate test-reporter
           command: |

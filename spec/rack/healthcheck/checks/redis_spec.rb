@@ -5,8 +5,9 @@ require "rack/healthcheck/type"
 require "redis"
 
 describe Rack::Healthcheck::Checks::Redis do
-  let(:redis_check) { described_class.new("name", {}) }
-  let(:connection) { double(info: true) }
+  let(:config) { {} }
+  let(:redis_check) { described_class.new("name", config) }
+  let(:connection) { double(info: true, close: nil) }
 
   describe ".new" do
     it "sets type as CACHE" do
@@ -18,7 +19,7 @@ describe Rack::Healthcheck::Checks::Redis do
     subject(:run_it) { redis_check.run }
 
     before do
-      allow(Redis).to receive(:new).with(any_args).and_return(connection)
+      allow(Redis).to receive(:new).and_return(connection)
     end
 
     context "when redis server is available" do
@@ -26,6 +27,20 @@ describe Rack::Healthcheck::Checks::Redis do
         run_it
 
         expect(redis_check.status).to be_truthy
+      end
+
+      it "does not pass healthcheck options to Redis" do
+        config[:optional] = true
+
+        run_it
+
+        expect(Redis).to have_received(:new).with({})
+      end
+
+      it "closes the connection" do
+        run_it
+
+        expect(connection).to have_received(:close)
       end
     end
 

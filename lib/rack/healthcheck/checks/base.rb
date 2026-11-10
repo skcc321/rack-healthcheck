@@ -38,7 +38,7 @@ module Rack
             time: elapsed_time,
             url: sanitized_url,
             details: details
-          }.reject { |_key, value| value.nil? }
+          }.compact
         end
 
         def keep_in_pool?

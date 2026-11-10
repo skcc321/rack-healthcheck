@@ -27,12 +27,16 @@ module Rack
 
         def check
           super do
-            if config.key?(:connected_to)
-              ::ActiveRecord::Base.connected_to(**config[:connected_to]) do
-                ::ActiveRecord::Base.connection.select_value("SELECT 1 + 1")
+            query = proc do
+              ::ActiveRecord::Base.with_connection do |connection|
+                connection.select_value("SELECT 1 + 1")
               end
+            end
+
+            if config.key?(:connected_to)
+              ::ActiveRecord::Base.connected_to(**config[:connected_to], &query)
             else
-              ::ActiveRecord::Base.connection.select_value("SELECT 1 + 1")
+              query.call
             end
           end
         end
