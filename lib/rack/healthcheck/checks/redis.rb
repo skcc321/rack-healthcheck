@@ -28,8 +28,12 @@ module Rack
 
         def check
           super do
-            redis = ::Redis.new(config)
-            redis.info
+            redis = ::Redis.new(config.except(:optional))
+            begin
+              redis.info
+            ensure
+              redis.close
+            end
           end
         end
       end

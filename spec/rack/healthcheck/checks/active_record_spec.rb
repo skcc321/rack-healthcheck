@@ -19,7 +19,7 @@ describe Rack::Healthcheck::Checks::ActiveRecord do
 
     context "when database is up" do
       before do
-        allow(ActiveRecord::Base).to receive(:connection).and_return(connection_pool)
+        allow(ActiveRecord::Base).to receive(:with_connection).and_yield(connection_pool)
       end
 
       it "sets status to true" do
@@ -31,7 +31,7 @@ describe Rack::Healthcheck::Checks::ActiveRecord do
 
     context "when database is down" do
       before do
-        allow(ActiveRecord::Base).to receive(:connection)
+        allow(ActiveRecord::Base).to receive(:with_connection)
           .and_raise(ActiveRecord::ConnectionNotEstablished)
       end
 

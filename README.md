@@ -1,160 +1,194 @@
-[![Gem Version](https://badge.fury.io/rb/rack-healthcheck.svg)](https://badge.fury.io/rb/rack-healthcheck)
-[![Build Status](https://travis-ci.org/downgba/rack-healthcheck.svg?branch=master)](https://travis-ci.org/downgba/rack-healthcheck)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/b1e9fec230d987b04f29/test_coverage)](https://codeclimate.com/github/downgba/rack-healthcheck/test_coverage)
-[![Maintainability](https://api.codeclimate.com/v1/badges/b1e9fec230d987b04f29/maintainability)](https://codeclimate.com/github/downgba/rack-healthcheck/maintainability)
+[![Gem Version](https://img.shields.io/gem/v/rack-healthcheck)](https://rubygems.org/gems/rack-healthcheck)
+[![CI](https://github.com/skcc321/rack-healthcheck/actions/workflows/ci.yml/badge.svg)](https://github.com/skcc321/rack-healthcheck/actions/workflows/ci.yml)
+[![Test Coverage](https://codecov.io/gh/skcc321/rack-healthcheck/branch/master/graph/badge.svg)](https://codecov.io/gh/skcc321/rack-healthcheck)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.4.12-red)](https://www.ruby-lang.org)
+[![License](https://img.shields.io/gem/l/rack-healthcheck)](LICENSE.txt)
 
 # Rack::Healthcheck
 
-Is a middleware that verifies if your app and all resources that it needs are available.
+Rack middleware that exposes lightweight health endpoints and detailed dependency checks for Rails, Sinatra, and other Rack applications.
+
+## Requirements
+
+- Ruby 3.4.12 or newer
+- The client gem for every configured integration, such as `activerecord`, `redis`, `bunny`, or `mongoid`
+
+Service clients are intentionally not runtime dependencies of this gem. Add and load only the clients your application uses. If a client is missing or raises an error, that check is reported as unhealthy and the first line of the error is returned in `details`.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add the gem to your application's `Gemfile`:
 
 ```ruby
-gem 'rack-healthcheck'
+gem "rack-healthcheck"
 ```
 
-And then execute:
+Then install it:
 
-    $ bundle
+```bash
+bundle install
+```
 
-Or install it yourself as:
+You can also install it directly:
 
-    $ gem install rack-healthcheck
+```bash
+gem install rack-healthcheck
+```
 
-## Usage
+## Middleware Setup
 
-###### Rails
+### Rails
+
+Add the middleware in `config/application.rb`:
+
 ```ruby
-# config/application.rb
 config.middleware.use Rack::Healthcheck::Middleware
 ```
 
-This may, depending on setup need a position specified. If you see Rack errors in your tests, or elsewhere, try this.
+If middleware ordering matters in your application, place it explicitly:
 
 ```ruby
-# config/application.rb
 config.middleware.insert_before 0, Rack::Healthcheck::Middleware
 ```
 
-If it still doesn't work, some users are positionally specifying that the middleware come before another by class name.
+### Sinatra and Rack
+
+Add the middleware in `config.ru`:
 
 ```ruby
-# config/application.rb
-config.middleware.insert_before ActiveRecord::Migration::CheckPending, Rack::Healthcheck::Middleware
-```
-
-This name may change depending on the framework & version you use this with, and may not be available which is why absolute position is provided above.
-
-###### Sinatra
-```ruby
-# config.ru
 use Rack::Healthcheck::Middleware
 ```
 
-### Setting up
+## Configuration
 
-Create an initializer file, where you'll setup all services that you use.
+Configure the application metadata and checks during application initialization:
 
 ```ruby
 Rack::Healthcheck.configure do |config|
-  config.app_name = "Your Application"
-  config.app_version = 1.0
+  config.app_name = "My Application"
+  config.app_version = "1.0.0"
   config.checks = [
-    Rack::Healthcheck::Checks::ActiveRecord.new("Database"),
-    Rack::Healthcheck::Checks::RabbitMQ.new(name, config = {
-      hosts: [localhost],
-      port: 5672,
-      user: guest,
-      pass: guest
-    }),
-    Rack::Healthcheck::Checks::Redis.new(name, config = {
-      url: "redis://localhost:6379",
-      password: "pass"
-    })
-    Rack::Healthcheck::Checks::HTTPRequest.new(name, config = {
-      url: localhost,
-      headers: {"Host" => "something"},
-      service_type: "INTERNAL_SERVICE",
-      expected_result: "LIVE"
-    })
+    Rack::Healthcheck::Checks::ActiveRecord.new(
+      "Primary database",
+      { connected_to: { role: :writing } }
+    ),
+    Rack::Healthcheck::Checks::Redis.new(
+      "Cache",
+      { url: "redis://localhost:6379" }
+    ),
+    Rack::Healthcheck::Checks::HTTPRequest.new(
+      "Internal API",
+      {
+        url: "http://localhost:3001/healthcheck",
+        service_type: Rack::Healthcheck::Type::INTERNAL_SERVICE,
+        expected_result: "LIVE",
+        optional: true
+      }
+    )
   ]
 end
 ```
 
-##### Available checks
+`app_name` and `app_version` are included in the detailed response. `checks` should be an array; when omitted, the detailed endpoint returns an empty `checks` array.
 
-* Rack::Healthcheck::Checks::ActiveRecord.new(name, config = {})
-* Rack::Healthcheck::Checks::MongoDB.new(name, config = {})
-* Rack::Healthcheck::Checks::RabbitMQ.new(name, config = {})
-* Rack::Healthcheck::Checks::Redis.new(name, config = {})
-* Rack::Healthcheck::Checks::HTTPRequest.new(name, config = {})
+### Check Options
 
-You can inform if one of your checks is optional, so this check will be disregarded in final result.
-To do that you just need to pass a hash with `:optional` key.
+Every check has a display name. Most checks also accept:
 
-```ruby
-Rack::Healthcheck::Checks::ActiveRecord.new("Test", {optional: true})
-```
+- `optional`: when `true`, a failed check remains visible but does not make the aggregate status unhealthy.
+- `url`: connection configuration or display metadata, depending on the check. Embedded `user:password@` credentials are filtered from responses.
 
-If you want to display the service url in final result, you need to pass it in hash config too.
+Common integrations are:
 
-```ruby
-Rack::Healthcheck::Checks::ActiveRecord.new("Test", {optional: true, url: "http://myservice.com/healthcheck"})
-```
-### Routes
+| Check | Client | Configuration |
+| --- | --- | --- |
+| `ActiveRecord` | `activerecord` | Optional `connected_to` hash for a role or shard; optional `url` metadata |
+| `Sequel` | `sequel` and a database adapter | Required connection `url` |
+| `MongoDB` | `mongoid` | Optional Mongoid client `name`; optional `url` metadata |
+| `RabbitMQ` | `bunny` | Bunny connection options such as `hosts`, `port`, `user`, and `pass` |
+| `Redis` | `redis` | Redis connection options such as `url`, `password`, and timeouts |
+| `HTTPRequest` | Ruby standard library | Required `url`, `service_type`, and `expected_result` string or regular expression |
 
-By default this gem creates two routes `/healthcheck` and `/healthcheck/complete`.
+Valid HTTP request service types are `CACHE`, `EXTERNAL_SERVICE`, `INTERNAL_SERVICE`, `STORAGE`, `MESSAGING`, `DATABASE`, and `FILE`, available as constants under `Rack::Healthcheck::Type`.
 
-The `/healthcheck` route doesn't verify the services used by application. This is the fastest way to tell to load balancer if it should or not keep the machine in the pool.
-These are the available HTTP methods for this route:
+Additional built-in checks are `Elasticsearch`, `Flightaware`, `Geocoder`, `Mailgunner`, `Marinetraffic`, `OhPipe`, `OneSignal`, `Pusher`, `S3`, and `Twilio`. These integrations expect their corresponding client libraries to be configured by the host application.
 
-* GET -> Returns the current status (LIVE|DEAD)
-* POST -> Changes the current status to LIVE
-* DELETE -> Changes the current status to DEAD
+## Endpoints
 
-The `/healthcheck/complete` performs all configured checks and returns a JSON with a lot of information (elapsed time, status for each service, global status considering only required services).
-Example:
+The default mount path exposes two exact routes:
+
+| Route | Methods | Response |
+| --- | --- | --- |
+| `/healthcheck` | `GET`, `POST`, `DELETE` | HTTP 200 with plain-text `LIVE` or `DEAD` |
+| `/healthcheck/complete` | `GET` | HTTP 200 when all required checks pass; otherwise HTTP 503 with JSON details |
+
+`GET /healthcheck` returns the current load-balancer state without running dependency checks. `POST` changes the state to `LIVE`, and `DELETE` changes it to `DEAD`.
+
+`GET /healthcheck/complete` runs configured checks concurrently and returns application metadata and each result:
+
 ```json
 {
-  "name": "My application",
-  "status": true,
-  "version": 1.0,
+  "name": "My Application",
+  "status": false,
+  "version": "1.0.0",
   "checks": [
     {
-      "name": "Oracle database",
+      "name": "Primary database",
       "type": "DATABASE",
       "status": true,
       "optional": false,
-      "time": 0.036443
+      "time": 0.012
+    },
+    {
+      "name": "Internal API",
+      "type": "INTERNAL_SERVICE",
+      "status": false,
+      "optional": true,
+      "time": 0.045,
+      "url": "http://localhost:3001/healthcheck",
+      "details": "Connection refused"
     }
   ]
 }
 ```
 
-##### Changing default routes
+Unknown routes and unsupported methods are passed to the wrapped Rack application.
 
-If you want to change the default route, you just need to pass the new route to the middleware
+### Custom Mount Path
+
+Pass a base path to the middleware to change both routes:
 
 ```ruby
-# For rails
-# config/application.rb
-config.middleware.use Rack::Healthcheck::Middleware, "/myroute"
-# or
-# For sinatra
-# config.ru
-use Rack::Healthcheck::Middleware, "/myroute"
+# Rails
+config.middleware.use Rack::Healthcheck::Middleware, "/status"
+
+# Sinatra or Rack
+use Rack::Healthcheck::Middleware, "/status"
 ```
+
+This exposes `/status` and `/status/complete`. Configure one mount path per process.
+
+## Development
+
+Install dependencies and run the checks locally:
+
+```bash
+bin/setup
+bundle exec rspec
+bundle exec rubocop -D
+bundle exec rake build
+```
+
+RSpec generates an HTML coverage report at `coverage/index.html`. GitHub Actions also uploads that directory as the `coverage-report` artifact and sends the machine-readable report to Codecov.
 
 ## Contributing
 
-1. Fork it ( https://github.com/downgba/rack-healthcheck/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+1. [Fork the repository](https://github.com/skcc321/rack-healthcheck/fork).
+2. Create a feature branch.
+3. Add tests for behavioral changes.
+4. Run RSpec and RuboCop.
+5. Open a pull request.
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
+The gem is available as open source under the terms of the [MIT License](LICENSE.txt).

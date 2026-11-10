@@ -1,11 +1,16 @@
+AllCops:
+  NewCops: enable
+  SuggestExtensions: false
+  TargetRubyVersion: 3.4
+
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
 Metrics/BlockLength:
-  ExcludedMethods:
+  AllowedMethods:
     - describe
 
-Metrics/LineLength:
+Layout/LineLength:
   Max: 150
 
 Style/Documentation:

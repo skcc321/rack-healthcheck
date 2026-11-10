@@ -38,7 +38,7 @@ module Rack
           results = []
           status = true
           Rack::Healthcheck.configuration.checks.each do |check|
-            status = (status == true && check.keep_in_pool?)
+            status = status == true && check.keep_in_pool?
             results << check.to_hash
           end
 

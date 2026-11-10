@@ -15,7 +15,6 @@ describe Rack::Healthcheck::Actions::Complete do
       status: false,
       version: 1.0,
       checks: [{
-        details: "No connection pool for 'ActiveRecord::Base' found.",
         name: "database",
         type: "DATABASE",
         status: false,
@@ -50,6 +49,10 @@ describe Rack::Healthcheck::Actions::Complete do
 
         allow_any_instance_of(Rack::Healthcheck::Checks::ActiveRecord).to receive(:status) { false }
         allow_any_instance_of(Rack::Healthcheck::Checks::Redis).to receive(:status) { false }
+        allow(database_check).to receive(:run)
+        allow(redis_check).to receive(:run)
+        allow(database_check).to receive(:elapsed_time).and_return(0.0)
+        allow(redis_check).to receive(:elapsed_time).and_return(0.0)
 
         Rack::Healthcheck.configure do |config|
           config.app_name     = "test"
