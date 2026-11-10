@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.12'
+          bundler-cache: true
+      - name: Run tests
+        run: bundle exec rspec
+      - name: Run RuboCop
+        run: bundle exec rubocop -D
+      - name: Audit dependencies
+        run: |
+          gem install bundler-audit
+          bundle-audit check --update
