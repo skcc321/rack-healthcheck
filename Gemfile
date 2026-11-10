@@ -14,7 +14,7 @@ group :development do
 end
 
 group :test do
-  gem "activerecord", "~> 8.1", ">= 8.1.4.1"
+  gem "activerecord", "~> 8.1"
   gem "bunny", "~> 3.6"
   gem "mongoid", "~> 9.1"
   gem "pry", "~> 0.16.1"
