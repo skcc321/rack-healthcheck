@@ -1,6 +1,7 @@
 [![Gem Version](https://img.shields.io/gem/v/rack-healthcheck)](https://rubygems.org/gems/rack-healthcheck)
 [![CI](https://github.com/skcc321/rack-healthcheck/actions/workflows/ci.yml/badge.svg)](https://github.com/skcc321/rack-healthcheck/actions/workflows/ci.yml)
-[![Test Coverage](https://codecov.io/gh/skcc321/rack-healthcheck/branch/master/graph/badge.svg)](https://codecov.io/gh/skcc321/rack-healthcheck)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.4.12-red)](https://www.ruby-lang.org)
+[![License](https://img.shields.io/gem/l/rack-healthcheck)](LICENSE.txt)
 
 # Rack::Healthcheck
 
