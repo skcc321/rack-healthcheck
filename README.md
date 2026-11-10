@@ -181,6 +181,10 @@ bundle exec rake build
 
 RSpec generates an HTML coverage report at `coverage/index.html`. GitHub Actions also uploads that directory as the `coverage-report` artifact and sends the machine-readable report to Codecov.
 
+## Acknowledgements
+
+Rack::Healthcheck was originally created by [Leandro Maduro](https://github.com/leandro-maduro) in the [original repository](https://github.com/leandro-maduro/rack-healthcheck). This repository continues that work and retains the original author's copyright notice in the MIT license.
+
 ## Contributing
 
 1. [Fork the repository](https://github.com/skcc321/rack-healthcheck/fork).
