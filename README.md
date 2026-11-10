@@ -6,7 +6,7 @@
 
 # Rack::Healthcheck
 
-Rack middleware that exposes lightweight load-balancer and detailed dependency health checks for Rails, Sinatra, and other Rack applications.
+Rack middleware that exposes lightweight health endpoints and detailed dependency checks for Rails, Sinatra, and other Rack applications.
 
 ## Requirements
 
