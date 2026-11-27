@@ -25,9 +25,7 @@ module Rack
         # }
         # @see Rack::Healthcheck::Type
         def initialize(name, config)
-          unless config[:url].to_s.match?(%r{\Ahttps?://})
-            raise InvalidURL, "Expected :url to be a http or https endpoint"
-          end
+          raise InvalidURL, "Expected :url to be a http or https endpoint" unless config[:url].to_s.match?(%r{\Ahttps?://})
 
           super(name, config[:service_type], config[:optional], config[:url])
           @config = config
