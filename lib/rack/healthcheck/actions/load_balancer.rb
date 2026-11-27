@@ -39,7 +39,7 @@ module Rack
         private
 
         def response
-          ["200", { "Content-Type" => "text/plain" }, [self.class.status]]
+          [200, { "content-type" => "text/plain" }, [self.class.status]]
         end
       end
     end

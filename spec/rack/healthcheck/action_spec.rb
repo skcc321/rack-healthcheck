@@ -30,8 +30,12 @@ describe Rack::Healthcheck::Action do
     context "using another route" do
       let(:new_path) { "/path" }
 
-      before(:each) do
-        Rack::Healthcheck::Action.mount_at = new_path
+      around do |example|
+        original_path = described_class.mount_at
+        described_class.mount_at = new_path
+        example.run
+      ensure
+        described_class.mount_at = original_path
       end
 
       it "returns a new instance using the new path" do

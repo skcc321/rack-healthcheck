@@ -27,9 +27,9 @@ module Rack
           perform
 
           body = result
-          status = body[:status] ? "200" : "503"
+          status = body[:status] ? 200 : 503
 
-          [status, { "Content-Type" => "application/json" }, [body.to_json]]
+          [status, { "content-type" => "application/json" }, [body.to_json]]
         end
 
         private
