@@ -30,26 +30,26 @@ describe Rack::Healthcheck::Checks::Base do
   describe "#run" do
     let(:failing_check_class) do
       Class.new(described_class) do
-        attr_accessor :fail
+        attr_accessor :failing
 
         def check
-          super { raise "boom" if fail }
+          super { raise "boom" if failing }
         end
       end
     end
     let(:check) { failing_check_class.new(name, type, optional, url) }
 
     it "reports the error message when the check fails" do
-      check.fail = true
+      check.failing = true
       check.run
 
       expect(check.to_hash).to include(status: false, details: "boom")
     end
 
     it "clears details once the check recovers" do
-      check.fail = true
+      check.failing = true
       check.run
-      check.fail = false
+      check.failing = false
       check.run
 
       expect(check.to_hash).to include(status: true)
