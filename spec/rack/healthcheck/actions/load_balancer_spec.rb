@@ -17,8 +17,8 @@ describe Rack::Healthcheck::Actions::LoadBalancer do
     context "when status is LIVE" do
       subject(:action) { described_class.new("/healthcheck", "get") }
 
-      it "returns LIVE" do
-        expect(action.get).to include(["LIVE"])
+      it "returns a Rack response with a LIVE body" do
+        expect(action.get).to eql([200, { "content-type" => "text/plain" }, ["LIVE"]])
       end
     end
 
