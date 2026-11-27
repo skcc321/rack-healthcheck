@@ -21,6 +21,10 @@ module Rack
       def checks
         @checks || []
       end
+
+      def checks_configured?
+        !@checks.nil?
+      end
     end
   end
 end

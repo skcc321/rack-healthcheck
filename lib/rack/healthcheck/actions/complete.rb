@@ -2,6 +2,7 @@
 
 require "json"
 require "rack/healthcheck/actions/base"
+require "rack/healthcheck/discovery"
 require "rack/healthcheck/checks/active_record"
 require "rack/healthcheck/checks/sequel"
 require "rack/healthcheck/checks/mongo_db"
@@ -23,10 +24,8 @@ module Rack
   module Healthcheck
     module Actions
       class Complete < Base
-        def get
-          perform
-
-          body = result
+        def get(checks: Rack::Healthcheck.configuration.checks, integrations: nil)
+          body = result(integrations ? Discovery.run(integrations) : perform(checks))
           status = body[:status] ? 200 : 503
 
           [status, { "content-type" => "application/json" }, [body.to_json]]
@@ -34,10 +33,10 @@ module Rack
 
         private
 
-        def result
+        def result(checks)
           results = []
           status = true
-          Rack::Healthcheck.configuration.checks.each do |check|
+          checks.each do |check|
             status = status == true && check.keep_in_pool?
             results << check.to_hash
           end
@@ -50,12 +49,13 @@ module Rack
           }
         end
 
-        def perform
-          threads = Rack::Healthcheck.configuration.checks.map do |check|
+        def perform(checks)
+          threads = checks.map do |check|
             Thread.new { check.run }
           end
 
           threads.each(&:join)
+          checks
         end
       end
     end
