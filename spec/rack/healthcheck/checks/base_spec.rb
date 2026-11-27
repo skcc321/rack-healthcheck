@@ -25,6 +25,22 @@ describe Rack::Healthcheck::Checks::Base do
     it "returns only filled attributes" do
       expect(base_check.to_hash.keys).to contain_exactly(:name, :type, :optional, :url)
     end
+
+    context "when url has credentials" do
+      let(:url) { "redis://user:secret@localhost:6379/0" }
+
+      it "filters them" do
+        expect(base_check.to_hash[:url]).to eq("redis://[FILTERED CREDENTIALS]@localhost:6379/0")
+      end
+    end
+
+    context "when url is a list of hosts" do
+      let(:url) { ["rabbit-1", "amqp://user:secret@rabbit-2"] }
+
+      it "sanitizes each entry instead of raising" do
+        expect(base_check.to_hash[:url]).to eq(["rabbit-1", "amqp://[FILTERED CREDENTIALS]@rabbit-2"])
+      end
+    end
   end
 
   describe "#keep_in_pool?" do
