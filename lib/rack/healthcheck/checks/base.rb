@@ -49,9 +49,14 @@ module Rack
 
         def sanitized_url
           return unless url
+          return url.map { |u| sanitize(u) } if url.is_a?(Array)
 
+          sanitize(url)
+        end
+
+        def sanitize(value)
           r = %r{://(.*:.*)@} # ://(usernam:password)@ regexp
-          url.gsub(r) { |m| m.gsub(Regexp.last_match(1), "[FILTERED CREDENTIALS]") }
+          value.to_s.gsub(r) { |m| m.gsub(Regexp.last_match(1), "[FILTERED CREDENTIALS]") }
         end
 
         def check
