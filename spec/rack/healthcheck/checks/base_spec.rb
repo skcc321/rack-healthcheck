@@ -27,6 +27,36 @@ describe Rack::Healthcheck::Checks::Base do
     end
   end
 
+  describe "#run" do
+    let(:failing_check_class) do
+      Class.new(described_class) do
+        attr_accessor :fail
+
+        def check
+          super { raise "boom" if fail }
+        end
+      end
+    end
+    let(:check) { failing_check_class.new(name, type, optional, url) }
+
+    it "reports the error message when the check fails" do
+      check.fail = true
+      check.run
+
+      expect(check.to_hash).to include(status: false, details: "boom")
+    end
+
+    it "clears details once the check recovers" do
+      check.fail = true
+      check.run
+      check.fail = false
+      check.run
+
+      expect(check.to_hash).to include(status: true)
+      expect(check.to_hash).not_to have_key(:details)
+    end
+  end
+
   describe "#keep_in_pool?" do
     context "when optional is true" do
       before(:each) do
