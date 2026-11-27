@@ -2,6 +2,8 @@
 
 require "rack/healthcheck/checks/base"
 require "rack/healthcheck/type"
+require "securerandom"
+require "tempfile"
 
 module Rack
   module Healthcheck
@@ -18,7 +20,7 @@ module Rack
         #   :bucket
         # }
         def initialize(name, config = {})
-          super(name, Rack::Healthcheck::Type::DATABASE, config[:optional], config[:url])
+          super(name, Rack::Healthcheck::Type::STORAGE, config[:optional], config[:url])
           @config = config
         end
 
@@ -26,10 +28,9 @@ module Rack
 
         def check
           super do
-            s3 = Aws::S3::Resource.new
-            path = "rack-healthcheck/test.txt"
-            s3.bucket(config[:bucket]).object(path).upload_file(Tempfile.create)
-            s3.bucket(config[:bucket]).object(path).delete
+            object = Aws::S3::Resource.new.bucket(config[:bucket]).object("rack-healthcheck/#{SecureRandom.uuid}.txt")
+            Tempfile.create("rack-healthcheck") { |file| object.upload_file(file) }
+            object.delete
           end
         end
       end
