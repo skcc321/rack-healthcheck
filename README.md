@@ -1,8 +1,8 @@
-[![Gem Version](https://img.shields.io/gem/v/rack-healthcheck)](https://rubygems.org/gems/rack-healthcheck)
+[![Release](https://img.shields.io/github/v/release/skcc321/rack-healthcheck)](https://github.com/skcc321/rack-healthcheck/releases)
 [![CI](https://github.com/skcc321/rack-healthcheck/actions/workflows/ci.yml/badge.svg)](https://github.com/skcc321/rack-healthcheck/actions/workflows/ci.yml)
 [![Test Coverage](https://codecov.io/gh/skcc321/rack-healthcheck/branch/master/graph/badge.svg)](https://codecov.io/gh/skcc321/rack-healthcheck)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.4.12-red)](https://www.ruby-lang.org)
-[![License](https://img.shields.io/gem/l/rack-healthcheck)](LICENSE.txt)
+[![License](https://img.shields.io/github/license/skcc321/rack-healthcheck)](LICENSE.txt)
 
 # Rack::Healthcheck
 
@@ -17,10 +17,10 @@ Service clients are intentionally not runtime dependencies of this gem. Add and 
 
 ## Installation
 
-Add the gem to your application's `Gemfile`:
+This fork is not published to rubygems.org (the `rack-healthcheck` gem there is a different, older release). Install it from GitHub by adding it to your application's `Gemfile`:
 
 ```ruby
-gem "rack-healthcheck"
+gem "rack-healthcheck", github: "skcc321/rack-healthcheck", tag: "v0.4.0"
 ```
 
 Then install it:
@@ -29,11 +29,7 @@ Then install it:
 bundle install
 ```
 
-You can also install it directly:
-
-```bash
-gem install rack-healthcheck
-```
+Releases are also published to [GitHub Packages](https://github.com/skcc321?tab=packages) as `rack-healthcheck`.
 
 ## Middleware Setup
 
@@ -122,7 +118,7 @@ The default mount path exposes two exact routes:
 | `/healthcheck` | `GET`, `POST`, `DELETE` | HTTP 200 with plain-text `LIVE` or `DEAD` |
 | `/healthcheck/complete` | `GET` | HTTP 200 when all required checks pass; otherwise HTTP 503 with JSON details |
 
-`GET /healthcheck` returns the current load-balancer state without running dependency checks. `POST` changes the state to `LIVE`, and `DELETE` changes it to `DEAD`.
+`GET /healthcheck` returns the current load-balancer state without running dependency checks. `POST` changes the state to `LIVE`, and `DELETE` changes it to `DEAD`. The state is kept in memory per process, so with a multi-process server (Puma cluster, Unicorn) `POST` and `DELETE` only affect the worker that handled the request. These routes are not authenticated; restrict them at the proxy or network level.
 
 `GET /healthcheck/complete` runs configured checks concurrently and returns application metadata and each result:
 
