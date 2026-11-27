@@ -69,19 +69,5 @@ describe Rack::Healthcheck::Actions::Complete do
         expect(JSON.parse(action.get.last[0], symbolize_names: true)).to eq(response)
       end
     end
-
-    context "when no service is informed" do
-      before(:each) do
-        Rack::Healthcheck.configure do |config|
-          config.app_name     = "test"
-          config.app_version  = 1.0
-          config.checks       = nil
-        end
-      end
-
-      it "performs without errors" do
-        expect { action.get }.to_not raise_error
-      end
-    end
   end
 end

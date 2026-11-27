@@ -52,12 +52,21 @@ describe Rack::Healthcheck::Checks::S3 do
     end
 
     it "sets status to false when the upload fails" do
-      allow(bucket).to receive(:object).and_raise(StandardError, "denied")
+      object = double(delete: true)
+      temporary_files = []
+      allow(bucket).to receive(:object).and_return(object)
+      allow(object).to receive(:upload_file) do |file|
+        temporary_files << file
+        raise IOError, "denied"
+      end
 
       s3_check.run
 
       expect(s3_check.status).to be(false)
       expect(s3_check.details).to eq("denied")
+      expect(temporary_files.size).to eq(1)
+      expect(temporary_files.first).to be_closed
+      expect(File.exist?(temporary_files.first.path)).to be(false)
     end
   end
 end

@@ -3,6 +3,13 @@
 require "spec_helper"
 
 describe Rack::Healthcheck::Actions::LoadBalancer do
+  around do |example|
+    original_status = described_class.status
+    example.run
+  ensure
+    described_class.status = original_status
+  end
+
   describe ".new" do
     context "with invalid request method" do
       subject(:action) { described_class.new("/path", "PATH") }
@@ -16,6 +23,8 @@ describe Rack::Healthcheck::Actions::LoadBalancer do
   describe "#get" do
     context "when status is LIVE" do
       subject(:action) { described_class.new("/healthcheck", "get") }
+
+      before { described_class.status = described_class::LIVE }
 
       it "returns a Rack response with a LIVE body" do
         expect(action.get).to eql([200, { "content-type" => "text/plain" }, ["LIVE"]])
