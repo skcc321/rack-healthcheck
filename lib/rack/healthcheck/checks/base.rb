@@ -60,6 +60,7 @@ module Rack
         end
 
         def check
+          @details = nil
           yield
           @status = true
         rescue StandardError => e
