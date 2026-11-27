@@ -10,17 +10,17 @@ Rack middleware that exposes lightweight health endpoints and detailed dependenc
 
 ## Requirements
 
-- Ruby 3.4.12 or newer
-- The client gem for every configured integration, such as `activerecord`, `redis`, `bunny`, or `mongoid`
+- Ruby 3.4.12 or newer.
+- Add and load the client gems for the checks you configure. They are not runtime dependencies of `rack-healthcheck`.
 
-Service clients are intentionally not runtime dependencies of this gem. Add and load only the clients your application uses. If a client is missing or raises an error, that check is reported as unhealthy and the first line of the error is returned in `details`.
+A built-in check that raises an error reports `status: false` and includes the first line of the error in `details`.
 
 ## Installation
 
-This fork is not published to rubygems.org (the `rack-healthcheck` gem there is a different, older release). Install it from GitHub by adding it to your application's `Gemfile`:
+This README describes `master`, which includes the Rack 3 response fixes. Install from GitHub by adding this to your application's `Gemfile`:
 
 ```ruby
-gem "rack-healthcheck", github: "skcc321/rack-healthcheck", tag: "v0.4.0"
+gem "rack-healthcheck", github: "skcc321/rack-healthcheck", branch: "master"
 ```
 
 Then install it:
@@ -29,7 +29,7 @@ Then install it:
 bundle install
 ```
 
-Releases are also published to [GitHub Packages](https://github.com/skcc321?tab=packages) as `rack-healthcheck`.
+Commit `Gemfile.lock` to pin the resolved revision. The tagged release `v0.4.0` predates the Rack 3 response fixes, and the gem on RubyGems.org is not published by this fork.
 
 ## Middleware Setup
 
@@ -52,6 +52,8 @@ config.middleware.insert_before 0, Rack::Healthcheck::Middleware
 Add the middleware in `config.ru`:
 
 ```ruby
+require "rack/healthcheck"
+
 use Rack::Healthcheck::Middleware
 ```
 
@@ -91,7 +93,7 @@ end
 
 Every check has a display name. Most checks also accept:
 
-- `optional`: when `true`, a failed check remains visible but does not make the aggregate status unhealthy.
+- `optional`: defaults to `false`. An optional check still runs and reports its own result, but its failure does not make `/healthcheck/complete` unhealthy.
 - `url`: connection configuration or display metadata, depending on the check. Embedded `user:password@` credentials are filtered from responses.
 
 Common integrations are:
@@ -104,10 +106,9 @@ Common integrations are:
 | `RabbitMQ` | `bunny` | Bunny connection options such as `hosts`, `port`, `user`, and `pass` |
 | `Redis` | `redis` | Redis connection options such as `url`, `password`, and timeouts |
 | `HTTPRequest` | Ruby standard library | Required `url`, `service_type`, and `expected_result` string or regular expression |
+| `S3` | `aws-sdk-s3` | Required `bucket`; the check uploads and deletes a probe object |
 
 Valid HTTP request service types are `CACHE`, `EXTERNAL_SERVICE`, `INTERNAL_SERVICE`, `STORAGE`, `MESSAGING`, `DATABASE`, and `FILE`, available as constants under `Rack::Healthcheck::Type`.
-
-Additional built-in checks are `Elasticsearch`, `Flightaware`, `Geocoder`, `Mailgunner`, `Marinetraffic`, `OhPipe`, `OneSignal`, `Pusher`, `S3`, and `Twilio`. These integrations expect their corresponding client libraries to be configured by the host application.
 
 ## Endpoints
 
@@ -125,7 +126,7 @@ The default mount path exposes two exact routes:
 ```json
 {
   "name": "My Application",
-  "status": false,
+  "status": true,
   "version": "1.0.0",
   "checks": [
     {
@@ -147,6 +148,8 @@ The default mount path exposes two exact routes:
   ]
 }
 ```
+
+This response is HTTP 200: the database is healthy, and the failed API check is optional. Keep the detailed endpoint internal if it exposes service URLs or error details you don't want to publish.
 
 Unknown routes and unsupported methods are passed to the wrapped Rack application.
 
