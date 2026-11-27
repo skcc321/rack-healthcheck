@@ -23,13 +23,19 @@ module Rack
   module Healthcheck
     module Actions
       class Complete < Base
+        REQUEST_LOCK = Mutex.new
+        private_constant :REQUEST_LOCK
+
         def get
-          perform
+          # Checks share mutable state. Keep the lock until the response has been serialized.
+          REQUEST_LOCK.synchronize do
+            perform
 
-          body = result
-          status = body[:status] ? 200 : 503
+            body = result
+            status = body[:status] ? 200 : 503
 
-          [status, { "content-type" => "application/json" }, [body.to_json]]
+            [status, { "content-type" => "application/json" }, [body.to_json]]
+          end
         end
 
         private
@@ -51,11 +57,27 @@ module Rack
         end
 
         def perform
+          # Do not let an asynchronous timeout interrupt worker registration or cleanup.
+          Thread.handle_interrupt(Object => :never) { perform_checks }
+        end
+
+        def perform_checks
+          started = 0
+          finished = Queue.new
           threads = Rack::Healthcheck.configuration.checks.map do |check|
-            Thread.new { check.run }
+            thread = Thread.new do
+              check.run
+            ensure
+              finished << true
+            end
+            started += 1
+            thread
           end
 
-          threads.each(&:join)
+          Thread.handle_interrupt(Object => :immediate) { threads.each(&:join) }
+        ensure
+          # Wait for outstanding checks without re-raising their errors during cleanup.
+          started.times { finished.pop }
         end
       end
     end

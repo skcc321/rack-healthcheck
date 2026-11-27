@@ -120,7 +120,9 @@ The default mount path exposes two exact routes:
 
 `GET /healthcheck` returns the current load-balancer state without running dependency checks. `POST` changes the state to `LIVE`, and `DELETE` changes it to `DEAD`. The state is kept in memory per process, so with a multi-process server (Puma cluster, Unicorn) `POST` and `DELETE` only affect the worker that handled the request. These routes are not authenticated; restrict them at the proxy or network level.
 
-`GET /healthcheck/complete` runs configured checks concurrently and returns application metadata and each result:
+`GET /healthcheck/complete` runs configured checks concurrently and returns application metadata and each result. Detailed requests in the same process run one at a time, even across mounts, so one request cannot overwrite another's check results. If a detailed request is interrupted, the next one still waits for its running checks to finish. The lightweight `/healthcheck` route does not wait for detailed requests.
+
+Example response:
 
 ```json
 {
