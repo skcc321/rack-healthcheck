@@ -16,6 +16,12 @@ describe Rack::Healthcheck::Checks::S3 do
     end
   end
 
+  describe ".new" do
+    it "sets type as STORAGE" do
+      expect(s3_check.type).to eq(Rack::Healthcheck::Type::STORAGE)
+    end
+  end
+
   describe "#run" do
     it "uploads and deletes the probe object" do
       s3_check.run
