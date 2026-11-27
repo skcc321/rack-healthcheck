@@ -18,6 +18,7 @@ group :test do
   gem "bunny", "~> 3.6"
   gem "mongoid", "~> 9.1"
   gem "pry", "~> 0.16.1"
+  gem "rack", "~> 3.2.0"
   gem "redis", "~> 6.0"
   gem "rspec", "~> 3.13"
   gem "sequel", "~> 5.110"
