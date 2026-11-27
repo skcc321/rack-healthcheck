@@ -14,6 +14,13 @@ describe Rack::Healthcheck::Checks::HTTPRequest do
   let(:http_request_check) { described_class.new("name", config) }
 
   describe ".new" do
+    [nil, "localhost.com", "ftp://localhost.com", "x\nhttp://localhost.com"].each do |invalid_url|
+      it "raises InvalidURL for #{invalid_url.inspect}" do
+        expect { described_class.new("name", config.merge(url: invalid_url)) }
+          .to raise_error(Rack::Healthcheck::Checks::HTTPRequest::InvalidURL)
+      end
+    end
+
     it "sets type as INTERNAL_SERVICE" do
       expect(http_request_check.type).to eq(Rack::Healthcheck::Type::INTERNAL_SERVICE)
     end
