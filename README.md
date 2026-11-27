@@ -162,7 +162,7 @@ config.middleware.use Rack::Healthcheck::Middleware, "/status"
 use Rack::Healthcheck::Middleware, "/status"
 ```
 
-This exposes `/status` and `/status/complete`. Configure one mount path per process.
+This exposes `/status` and `/status/complete` on this middleware instance without changing the routes of other instances. The load-balancer state and check configuration are still shared within the process.
 
 ## Development
 
