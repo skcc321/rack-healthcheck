@@ -34,29 +34,45 @@ describe "Rack response contract" do
   describe "/healthcheck/complete" do
     let(:configuration) { Rack::Healthcheck::Configuration.new }
 
+    def failing_check(optional:)
+      options = { url: "https://example.test/health", service_type: "INTERNAL_SERVICE", expected_result: "LIVE", optional: optional }
+      Rack::Healthcheck::Checks::HTTPRequest.new("service", options).tap do |check|
+        allow(check).to receive(:http_get).and_raise(IOError, "unavailable")
+      end
+    end
+
     before do
       allow(Rack::Healthcheck).to receive(:configuration).and_return(configuration)
     end
 
-    it "returns a valid Rack response when healthy" do
+    it "returns a valid Rack response with an empty list when no checks are configured" do
+      configuration.checks = nil
       response = request.get("/healthcheck/complete")
 
       expect(response.status).to eq(200)
       expect(response["content-type"]).to eq("application/json")
-      expect(JSON.parse(response.body)).to include("status" => true)
+      expect(JSON.parse(response.body)).to include("status" => true, "checks" => [])
     end
 
     it "returns a valid Rack response when a required check fails" do
-      options = { url: "https://example.test/health", service_type: "INTERNAL_SERVICE", expected_result: "LIVE" }
-      check = Rack::Healthcheck::Checks::HTTPRequest.new("service", options)
-      allow(check).to receive(:http_get).and_raise(IOError, "unavailable")
-      configuration.checks = [check]
+      configuration.checks = [failing_check(optional: false)]
 
       response = request.get("/healthcheck/complete")
 
       expect(response.status).to eq(503)
       expect(response["content-type"]).to eq("application/json")
       expect(JSON.parse(response.body)).to include("status" => false)
+    end
+
+    it "reports a failing optional check without marking the endpoint unhealthy" do
+      configuration.checks = [failing_check(optional: true)]
+
+      response = request.get("/healthcheck/complete")
+      body = JSON.parse(response.body)
+
+      expect(response.status).to eq(200)
+      expect(body).to include("status" => true)
+      expect(body.fetch("checks")).to contain_exactly(a_hash_including("name" => "service", "status" => false, "optional" => true))
     end
   end
 end

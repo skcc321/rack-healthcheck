@@ -54,6 +54,13 @@ describe Rack::Healthcheck::Checks::Redis do
 
         expect(redis_check.status).to be_falsy
       end
+
+      it "still closes the connection" do
+        run_it
+
+        expect(connection).to have_received(:info).ordered
+        expect(connection).to have_received(:close).ordered
+      end
     end
 
     it "sets elapsed_time" do
