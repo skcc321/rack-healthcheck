@@ -20,7 +20,7 @@ module Rack
         #   :bucket
         # }
         def initialize(name, config = {})
-          super(name, Rack::Healthcheck::Type::DATABASE, config[:optional], config[:url])
+          super(name, Rack::Healthcheck::Type::STORAGE, config[:optional], config[:url])
           @config = config
         end
 
