@@ -19,7 +19,7 @@ module Rack
       attr_writer :checks
 
       def checks
-        @checks || {}
+        @checks || []
       end
     end
   end
