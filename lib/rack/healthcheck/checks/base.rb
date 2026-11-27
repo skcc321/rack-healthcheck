@@ -89,10 +89,14 @@ module Rack
           when Net::HTTPSuccess, Net::HTTPOK
             response.body
           when Net::HTTPRedirection, Net::HTTPMovedPermanently
-            http_get(response["location"], limit - 1)
+            http_get(redirect_target(url, response), limit - 1)
           else
             response.value
           end
+        end
+
+        def redirect_target(url, response)
+          URI.join(url, response["location"]).to_s
         end
       end
     end
