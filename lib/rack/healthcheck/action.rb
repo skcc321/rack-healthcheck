@@ -13,14 +13,15 @@ module Rack
       class << self
         attr_accessor :mount_at
 
-        def get(path, request_method)
-          raise InvalidAction, "Unknown action" unless available_actions.key?(path)
+        def get(path, request_method, mount_at: self.mount_at)
+          action = available_actions(mount_at: mount_at)[path]
+          raise InvalidAction, "Unknown action" unless action
 
-          available_actions[path].send(:new, path, request_method)
+          action.send(:new, path, request_method)
         end
 
-        def available_actions
-          route = @mount_at.gsub(%r{^/}, "")
+        def available_actions(mount_at: self.mount_at)
+          route = mount_at.gsub(%r{^/}, "")
           {
             "/#{route}" => Rack::Healthcheck::Actions::LoadBalancer,
             "/#{route}/complete" => Rack::Healthcheck::Actions::Complete
