@@ -12,8 +12,8 @@ Hanami in separate Puma processes. Each host uses its own frozen bundle;
 missing fixture gems are installed from RubyGems without changing the root
 bundle. Puma binds an OS-assigned port on `127.0.0.1` and wraps each app in
 `Rack::Lint`. The child verifies that the middleware loaded from the unpacked
-gem, not the checkout or an installed copy. Processes and temporary files are
-cleaned up after each example.
+gem, not the checkout or an installed copy. The gem is built once per run. Server
+processes are stopped after each example and temporary files after the run.
 
 The same HTTP assertions check application traffic, 404 fallthrough, GET
 liveness, and the healthy JSON response from one app-owned, manually

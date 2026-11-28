@@ -3,20 +3,23 @@
 require_relative "run"
 
 RSpec.describe "Stable middleware over HTTP" do
-  around do |example|
-    StableHTTP::Runner.with_package do |tmp, lib|
-      @workspace = tmp
-      @library = lib
-      example.run
-    end
+  # Build and unpack the gem once for all hosts.
+  before(:context) do
+    @package = StableHTTP::Runner.build_package
+    @workspace = @package.tmp
+    @library = @package.lib
   end
+
+  after(:context) { StableHTTP::Runner.cleanup_package(@package) }
 
   StableHTTP::Runner::HOSTS.each do |host|
     it "serves application traffic and explicit health checks on #{host}" do
       StableHTTP::Runner.with_host(host, @workspace, @library) do |port|
         StableHTTP::HTTP.connect(port) do |http|
           expect(StableHTTP::HTTP.response(http.get("/"))).to eq(["200", "text/plain", "app"])
-          expect(http.get("/missing").code).to eq("404")
+          missing = http.get("/missing")
+          expect(missing.code).to eq("404")
+          expect(missing.body).to eq("not found") if host == "rack" # the app's own fallback
           expect(StableHTTP::HTTP.response(http.get("/healthcheck"))).to eq(["200", "text/plain", "LIVE"])
 
           complete = http.get("/healthcheck/complete")

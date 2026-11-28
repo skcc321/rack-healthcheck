@@ -4,13 +4,21 @@ require "io/wait"
 
 module StableHTTPProcesses
   def self.with_signals
-    @interrupted = false
-    # Record interrupts without raising between spawn and PID assignment or
-    # during teardown. Server startup and HTTP waits already have deadlines.
-    handlers = %w[INT TERM].to_h { |signal| [signal, Signal.trap(signal) { @interrupted = true }] }
+    handlers = trap_signals
     yield
     check_interrupted!
   ensure
+    restore_signals(handlers)
+  end
+
+  def self.trap_signals
+    @interrupted = false
+    # Record interrupts without raising between spawn and PID assignment or
+    # during teardown. Server startup and HTTP waits already have deadlines.
+    %w[INT TERM].to_h { |signal| [signal, Signal.trap(signal) { @interrupted = true }] }
+  end
+
+  def self.restore_signals(handlers)
     handlers&.each { |signal, handler| Signal.trap(signal, handler) }
   end
 

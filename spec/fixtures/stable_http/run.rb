@@ -14,12 +14,26 @@ module StableHTTP
     BUNDLE = [RUBY, "-S", "bundle"].freeze
     HOSTS = %w[rack rails hanami].freeze
 
-    def self.with_package
-      StableHTTPProcesses.with_signals do
-        Bundler.with_unbundled_env do
-          Dir.mktmpdir("rh-http-") { |tmp| yield tmp, unpack_gem(tmp) }
-        end
-      end
+    Package = Struct.new(:tmp, :lib, :signals)
+
+    # Build and unpack the gem once; callers must pair this with cleanup_package.
+    def self.build_package
+      signals = StableHTTPProcesses.trap_signals
+      tmp = Dir.mktmpdir("rh-http-")
+      package = Package.new(tmp, nil, signals)
+      Bundler.with_unbundled_env { package.lib = unpack_gem(tmp) }
+      StableHTTPProcesses.check_interrupted!
+      package
+    rescue Exception # rubocop:disable Lint/RescueException
+      cleanup_package(package || Package.new(tmp, nil, signals))
+      raise
+    end
+
+    def self.cleanup_package(package)
+      return unless package
+
+      FileUtils.remove_entry(package.tmp) if package.tmp && File.exist?(package.tmp)
+      StableHTTPProcesses.restore_signals(package.signals)
     end
 
     def self.unpack_gem(tmp)
@@ -35,7 +49,7 @@ module StableHTTP
       dir = File.join(tmp, host)
       FileUtils.cp_r(File.join(__dir__, host), dir)
       FileUtils.cp(File.join(__dir__, "manual_check.rb"), tmp)
-      with_app(host, dir, lib, &)
+      Bundler.with_unbundled_env { with_app(host, dir, lib, &) }
     end
 
     def self.with_app(name, dir, lib, extra_env: {}, &)
