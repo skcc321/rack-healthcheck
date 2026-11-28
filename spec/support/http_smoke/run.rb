@@ -7,9 +7,10 @@ require "tmpdir"
 require_relative "http"
 require_relative "processes"
 
-module StableHTTP
+module HTTPSmoke
   module Runner
     ROOT = File.expand_path("../../..", __dir__).freeze
+    DUMMY = File.join(ROOT, "spec", "dummy").freeze
     RUBY = RbConfig.ruby
     BUNDLE = [RUBY, "-S", "bundle"].freeze
     HOSTS = %w[rack rails hanami].freeze
@@ -18,11 +19,11 @@ module StableHTTP
 
     # Build and unpack the gem once; callers must pair this with cleanup_package.
     def self.build_package
-      signals = StableHTTPProcesses.trap_signals
+      signals = HTTPSmokeProcesses.trap_signals
       tmp = Dir.mktmpdir("rh-http-")
       package = Package.new(tmp, nil, signals)
       Bundler.with_unbundled_env { package.lib = unpack_gem(tmp) }
-      StableHTTPProcesses.check_interrupted!
+      HTTPSmokeProcesses.check_interrupted!
       package
     rescue Exception # rubocop:disable Lint/RescueException
       cleanup_package(package || Package.new(tmp, nil, signals))
@@ -33,7 +34,7 @@ module StableHTTP
       return unless package
 
       FileUtils.remove_entry(package.tmp) if package.tmp && File.exist?(package.tmp)
-      StableHTTPProcesses.restore_signals(package.signals)
+      HTTPSmokeProcesses.restore_signals(package.signals)
     end
 
     def self.unpack_gem(tmp)
@@ -47,8 +48,8 @@ module StableHTTP
       raise ArgumentError, "unknown host: #{host}" unless HOSTS.include?(host)
 
       dir = File.join(tmp, host)
-      FileUtils.cp_r(File.join(__dir__, host), dir)
-      FileUtils.cp(File.join(__dir__, "manual_check.rb"), tmp)
+      FileUtils.cp_r(File.join(DUMMY, host), dir)
+      FileUtils.cp(File.join(DUMMY, "manual_check.rb"), tmp)
       Bundler.with_unbundled_env { with_app(host, dir, lib, &) }
     end
 
@@ -56,12 +57,12 @@ module StableHTTP
       env = extra_env.merge(host_env(dir, lib))
       prepare_bundle(dir, env)
       command = [*BUNDLE, "exec", RUBY, "-I", lib, File.join(__dir__, "serve.rb")]
-      StableHTTPProcesses.check_interrupted!
-      StableHTTPProcesses.with_host(name, dir, env, command, &)
+      HTTPSmokeProcesses.check_interrupted!
+      HTTPSmokeProcesses.with_host(name, dir, env, command, &)
     end
 
     def self.prepare_bundle(dir, env)
-      StableHTTPProcesses.check_interrupted!
+      HTTPSmokeProcesses.check_interrupted!
       return if system(env, *BUNDLE, "check", chdir: dir, out: File::NULL)
 
       system(env, *BUNDLE, "install", chdir: dir, exception: true)

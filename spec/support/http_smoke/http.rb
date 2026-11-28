@@ -3,7 +3,7 @@
 require "json"
 require "net/http"
 
-module StableHTTP
+module HTTPSmoke
   module HTTP
     def self.connect(port, &)
       http = Net::HTTP.new("127.0.0.1", port, nil)

@@ -1,15 +1,16 @@
-# Stable middleware HTTP smoke tests
+# HTTP smoke tests with dummy apps
 
-From a Git checkout, install the root bundle and run the opt-in suite:
+The apps live in `spec/dummy/{rack,rails,hanami}`; the process and HTTP harness is in
+`spec/support/http_smoke`. From a Git checkout, install the root bundle and run the opt-in suite:
 
 ```sh
 bundle install
-bundle exec rspec spec/fixtures/stable_http/http_examples.rb
+bundle exec rspec spec/integration/http_smoke_examples.rb
 ```
 
 The suite builds and unpacks the checkout's gem and runs Rack, Rails and
 Hanami in separate Puma processes. Each host uses its own frozen bundle;
-missing fixture gems are installed from RubyGems without changing the root
+missing dummy-app gems are installed from RubyGems without changing the root
 bundle. Puma binds an OS-assigned port on `127.0.0.1` and wraps each app in
 `Rack::Lint`. The child verifies that the middleware loaded from the unpacked
 gem, not the checkout or an installed copy. The gem is built once per run. Server

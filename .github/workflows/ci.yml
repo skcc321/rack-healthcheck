@@ -59,10 +59,10 @@ jobs:
           override_pr: ${{ github.event.pull_request.number }}
           version: v11.3.2
           fail_ci_if_error: true
-      - name: Run stable Rack, Rails, and Hanami HTTP smoke tests
+      - name: Run Rack, Rails, and Hanami HTTP smoke tests
         if: matrix.primary
         timeout-minutes: 10
-        run: bundle exec rspec spec/fixtures/stable_http/http_examples.rb
+        run: bundle exec rspec spec/integration/http_smoke_examples.rb
       - name: Run RuboCop
         if: matrix.primary
         run: bundle exec rubocop -D

@@ -2,7 +2,7 @@
 
 require "io/wait"
 
-module StableHTTPProcesses
+module HTTPSmokeProcesses
   def self.with_signals
     handlers = trap_signals
     yield
