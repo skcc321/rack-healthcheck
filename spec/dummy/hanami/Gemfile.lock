@@ -5,6 +5,7 @@ GEM
     bigdecimal (4.1.3)
     cgi (0.4.2)
     concurrent-ruby (1.3.8)
+    connection_pool (3.0.3)
     csv (3.3.2)
     date (3.4.1)
     dry-auto_inject (1.2.2)
@@ -93,6 +94,8 @@ GEM
     rdoc (6.14.0)
       erb
       psych (>= 4.0.0)
+    redis-client (0.30.1)
+      connection_pool
     reline (0.7.0)
       io-console (~> 0.5)
     stringio (3.1.2)
@@ -107,6 +110,7 @@ DEPENDENCIES
   hanami-router (= 3.0.1)
   puma (= 8.1.3)
   rack (= 3.2.9)
+  redis-client (= 0.30.1)
 
 CHECKSUMS
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
@@ -114,6 +118,7 @@ CHECKSUMS
   bundler (4.0.24) sha256=16ca64e20816a0cf151a948fb141d788602996d2b4d73577b74388fe84fa98bc
   cgi (0.4.2) sha256=a3cb190d46a820ca01a3e28bd5b64e67003ff99d7884b70512448566f35347e6
   concurrent-ruby (1.3.8) sha256=b2f1be836e968ccc78ccfce277ea79c72a88633f22306782c16ff23fb415d1e1
+  connection_pool (3.0.3) sha256=e0f8ee3ee0039396753e06e8a2dde0ef028e40f7df29e97f57da7577c489cb5e
   csv (3.3.2) sha256=6ff0c135e65e485d1864dde6c1703b60d34cc9e19bed8452834a0b28a519bd4e
   date (3.4.1) sha256=bf268e14ef7158009bfeaec40b5fa3c7271906e88b196d958a89d4b408abe64f
   dry-auto_inject (1.2.2) sha256=e548b45177c12768a1cb7b18563da21252420cbfce8e415ae8bafa97ca12d152
@@ -145,6 +150,7 @@ CHECKSUMS
   rackup (2.3.1) sha256=6c79c26753778e90983761d677a48937ee3192b3ffef6bc963c0950f94688868
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
   rdoc (6.14.0) sha256=2c46de58d7129b8743fcf6d76e3db971bdc914150e15ac06b386549bd82ed7db
+  redis-client (0.30.1) sha256=5151bc5c7bbfe48623732cdae3b900d8a22dc691cc7cdfacfb351ac55116522d
   reline (0.7.0) sha256=5b012d8e55dbf9d450f12bde2cf7d15ff546ae80b3f8f3b30e570d431815583d
   stringio (3.1.2) sha256=204f1828f85cdb39d57cac4abc6dc44b04505a223f131587f2e20ae3729ba131
   zeitwerk (2.8.3) sha256=2c85125a8467ce069e20123d1e709a08955c9d29c118c25b46b7b7fafdbb92e5

@@ -18,5 +18,13 @@ processes are stopped after each example and temporary files after the run.
 
 The same HTTP assertions check application traffic, 404 fallthrough, GET
 liveness, and the healthy JSON response from one app-owned, manually
-configured check. No Redis, Valkey, or other backing service is needed.
-The ordinary `bundle exec rspec` run does not boot the fixture apps.
+configured check (`HEALTHCHECK_DUMMY_PROFILE=manual`, the default).
+
+`spec/integration/redis_discovery_http_examples.rb` boots the same apps with
+the `redis` profile (`spec/dummy/redis_fixture.rb`) against a disposable
+`redis-server` on a Unix socket with TCP disabled (set `REDIS_SERVER` to use
+another binary such as Valkey). It proves liveness and ordinary traffic never
+resolve the client, and that `/healthcheck/complete` resolves it once and
+reports a live and an unreachable target. Adding another integration means a
+new profile in `spec/dummy/profile.rb` and one example file.
+The ordinary `bundle exec rspec` run does not boot the dummy apps.

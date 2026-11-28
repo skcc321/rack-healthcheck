@@ -44,13 +44,14 @@ module HTTPSmoke
       File.join(tmp, "rack-healthcheck", "lib")
     end
 
-    def self.with_host(host, tmp, lib, &)
+    def self.with_host(host, tmp, lib, profile: "manual", extra_env: {}, &)
       raise ArgumentError, "unknown host: #{host}" unless HOSTS.include?(host)
 
       dir = File.join(tmp, host)
       FileUtils.cp_r(File.join(DUMMY, host), dir)
-      FileUtils.cp(File.join(DUMMY, "manual_check.rb"), tmp)
-      Bundler.with_unbundled_env { with_app(host, dir, lib, &) }
+      FileUtils.cp(Dir.glob(File.join(DUMMY, "*.rb")), tmp)
+      env = extra_env.merge("HEALTHCHECK_DUMMY_PROFILE" => profile)
+      Bundler.with_unbundled_env { with_app(host, dir, lib, extra_env: env, &) }
     end
 
     def self.with_app(name, dir, lib, extra_env: {}, &)
