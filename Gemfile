@@ -10,7 +10,7 @@ gemspec
 group :development do
   gem "bundler", "~> 4.0", ">= 4.0.24"
   gem "rake", "~> 13.4"
-  gem "rubocop", "~> 1.92", require: false
+  gem "rubocop", "~> 1.93", require: false
 end
 
 group :test do
@@ -19,7 +19,7 @@ group :test do
   gem "mongoid", "~> 9.1"
   gem "pry", "~> 0.16.1"
   gem "rack", "~> 3.2.0"
-  gem "redis", "~> 6.0"
+  gem "redis", "~> 6.1"
   gem "rspec", "~> 3.13"
   gem "sequel", "~> 5.110"
   gem "simplecov", "~> 1.3"
