@@ -2,7 +2,7 @@
 
 require "rails"
 require "action_controller/railtie"
-require_relative "../../manual_check"
+require_relative "../../profile"
 
 class RailsSmoke < Rails::Application
   config.root = File.expand_path("..", __dir__)
@@ -10,5 +10,5 @@ class RailsSmoke < Rails::Application
   config.secret_key_base = SecureRandom.hex(32)
   config.logger = Logger.new(IO::NULL)
   config.hosts.clear
-  config.middleware.use Rack::Healthcheck::Middleware
+  config.middleware.use Rack::Healthcheck::Middleware, DummyProfile.options
 end

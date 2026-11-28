@@ -13,7 +13,7 @@ Rack middleware that exposes lightweight health endpoints and detailed dependenc
 - Ruby 3.4.12 or newer.
 - Add and load the client gems for the checks you configure. They are not runtime dependencies of `rack-healthcheck`.
 
-A built-in check that raises an error reports `status: false` and includes the first line of the error in `details`.
+A manual built-in check that raises an error reports `status: false` and normally includes the first line of the error in `details`. The auto Redis check uses fixed failure messages instead.
 
 ## Installation
 
@@ -57,6 +57,42 @@ require "rack/healthcheck"
 use Rack::Healthcheck::Middleware
 ```
 
+### Hanami
+
+Require `rack/healthcheck` and mount the middleware in `config/app.rb`:
+
+```ruby
+config.middleware.use Rack::Healthcheck::Middleware
+```
+
+### Automatic checks (Redis pilot)
+
+Mounting the middleware enables `:auto` by default unless an explicit check array is configured. Adding the gem without mounting the middleware does not expose any route. Auto mode only sees the integrations declared on that mount. It does not use framework hooks, loaded gems, or environment URLs to infer dependencies.
+
+Pass a named, app-owned `redis-client` client or pool, or a zero-argument callable that returns one:
+
+```ruby
+require "rack/healthcheck"
+require "redis_client" # add redis-client to your application's Gemfile
+
+# Reuse the pool your application already uses.
+use Rack::Healthcheck::Middleware, {
+  integrations: {
+    redis: {
+      cache: { client: cache_pool },
+      sessions: { client: -> { app_container["sessions_redis"] }, optional: false }
+    }
+  }
+}
+```
+
+In Rails or Hanami, pass the same options hash to `config.middleware.use` instead of `use`. For a custom mount, pass the path before the options hash (`use Rack::Healthcheck::Middleware, "/ready", options`). Mount options are boot-time configuration; don't mutate them while serving requests. Use display names that don't contain secrets.
+
+- Only `GET /healthcheck/complete` resolves and probes targets (or the equivalent custom path); the shallow endpoint is unchanged. Unconfigured Redis contributes no row. A named target with no usable client reports `Redis client resolution failed`; an unsuccessful `PING` reports `Redis PING failed`. Neither row exposes a URL or the underlying exception.
+- Discovered checks are informational by default. `optional: false` makes the named target required: a failed check makes the detailed endpoint return `503`.
+- Each request gets fresh auto check results. Resolution and probes run sequentially on the request thread. The middleware issues one `PING` using `redis-client`'s `call_once`, respects the configured pool checkout and client I/O timeouts, and never closes the client. There is no overall deadline and no timeout imposed on resolver code: keep resolvers fast and configure bounded timeouts on the client or pool.
+- Prefer a `RedisClient::Pooled` for a shared client in a concurrent app. An unpooled `RedisClient` is not thread-safe; only use one when the application guarantees exclusive use. The pilot does not support `redis` gem `Redis` objects, cluster adapters, or arbitrary pool wrappers. The existing manual `Checks::Redis` still works with the `redis` gem.
+
 ## Configuration
 
 Configure the application metadata and checks during application initialization:
@@ -87,7 +123,13 @@ Rack::Healthcheck.configure do |config|
 end
 ```
 
-`app_name` and `app_version` are included in the detailed response. `checks` should be an array; when omitted, the detailed endpoint returns an empty `checks` array.
+`app_name` and `app_version` are included in the detailed response. Select checks in this order:
+
+1. Mount `checks: [...]` (including `checks: []`) uses only that array; mount `checks: :auto` explicitly selects auto mode.
+2. Otherwise, a global `config.checks = [...]` (including `[]`) uses only that array and bypasses auto.
+3. Otherwise, the mount uses auto mode. With no recognized integration configured, `checks` is empty.
+
+The manual API runs the supplied check instances. It serializes detailed requests that use manual checks, but does not make those objects safe to use concurrently outside the middleware.
 
 ### Check Options
 
@@ -121,7 +163,7 @@ The default mount path exposes two exact routes:
 
 `GET /healthcheck` returns the current load-balancer state without running dependency checks. `POST` changes the state to `LIVE`, and `DELETE` changes it to `DEAD`. The state is kept in memory per process, so with a multi-process server (Puma cluster, Unicorn) `POST` and `DELETE` only affect the worker that handled the request. These routes are not authenticated; restrict them at the proxy or network level.
 
-`GET /healthcheck/complete` runs configured checks concurrently and returns application metadata and each result. Detailed requests in the same process run one at a time, even across mounts, so one request cannot overwrite another's check results. If a detailed request is interrupted, the next one still waits for its running checks to finish. The lightweight `/healthcheck` route does not wait for detailed requests.
+`GET /healthcheck/complete` returns application metadata and each check result. Manual checks within a request run concurrently, but detailed requests using manual checks run one at a time per process, even across mounts, so one request cannot overwrite another's results. If a manual request is interrupted, the next manual request still waits for its running checks to finish. Auto discovery uses request-local checks and does not take the manual lock. The lightweight `/healthcheck` route does not take that lock either.
 
 Example response:
 
@@ -167,7 +209,7 @@ config.middleware.use Rack::Healthcheck::Middleware, "/status"
 use Rack::Healthcheck::Middleware, "/status"
 ```
 
-This exposes `/status` and `/status/complete` on this middleware instance without changing the routes of other instances. The load-balancer state and check configuration are still shared within the process.
+This exposes `/status` and `/status/complete` on this middleware instance without changing the routes of other instances. Load-balancer state and legacy global configuration are still shared within the process; mount options are local to each instance.
 
 ## Development
 
@@ -181,6 +223,8 @@ bundle exec rake build
 ```
 
 RSpec generates an HTML coverage report at `coverage/index.html`. GitHub Actions also uploads that directory as the `coverage-report` artifact and sends the machine-readable report to Codecov.
+
+To include the live Redis autodiscovery specs, set `HEALTHCHECK_TEST_REDIS_SOCKET` to the Unix socket path of a disposable local Redis or Valkey server before running `bundle exec rspec`. The live specs are omitted when this variable is unset.
 
 ## Acknowledgements
 

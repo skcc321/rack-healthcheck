@@ -63,6 +63,29 @@ jobs:
         if: matrix.primary
         timeout-minutes: 10
         run: bundle exec rspec spec/integration/http_smoke_examples.rb
+      - name: Install Redis for discovery tests
+        if: matrix.primary
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y redis-server
+      - name: Run live Redis discovery specs
+        if: matrix.primary
+        timeout-minutes: 5
+        run: |
+          bundle exec ruby -r ./spec/support/http_smoke/redis_server - <<'RUBY'
+            passed = false
+            HTTPSmokeProcesses.with_signals do
+              HTTPSmokeProcesses.with_redis do |socket|
+                passed = system({ "HEALTHCHECK_TEST_REDIS_SOCKET" => socket },
+                                "bundle", "exec", "rspec", "spec/rack/healthcheck/redis_autodiscovery_live_spec.rb")
+              end
+            end
+            exit(passed ? 0 : 1)
+          RUBY
+      - name: Run Redis discovery HTTP smoke tests
+        if: matrix.primary
+        timeout-minutes: 10
+        run: bundle exec rspec spec/integration/redis_discovery_http_examples.rb
       - name: Run RuboCop
         if: matrix.primary
         run: bundle exec rubocop -D
