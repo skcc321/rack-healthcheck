@@ -38,7 +38,7 @@ jobs:
           bundler-cache: true
       - name: Run tests
         run: bundle exec rspec
-      # Save the primary suite's report before optional specs can overwrite it.
+      # Keep the primary suite's coverage report as the artifact for the baseline upload.
       - name: Upload coverage report
         if: ${{ !cancelled() && matrix.primary && (success() || hashFiles('coverage/coverage.json') != '') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -59,34 +59,10 @@ jobs:
           override_pr: ${{ github.event.pull_request.number }}
           version: v11.3.2
           fail_ci_if_error: true
-      # The discovery fixtures live on the v1.0 release train, not stable master.
-      - name: Install Redis for discovery tests
-        if: matrix.primary && hashFiles('spec/rack/healthcheck/redis_autodiscovery_live_spec.rb', 'spec/fixtures/framework_smoke/http_examples.rb') != ''
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y redis-server
-      - name: Run live Redis discovery specs
-        if: matrix.primary && hashFiles('spec/rack/healthcheck/redis_autodiscovery_live_spec.rb') != ''
-        timeout-minutes: 5
-        run: |
-          bundle exec ruby -r tmpdir -r ./spec/fixtures/framework_smoke/processes - <<'RUBY'
-            passed = false
-            SmokeProcesses.with_signals do
-              Dir.mktmpdir("rh-ci-", "/tmp") do |dir|
-                SmokeProcesses.with_redis(dir) do |socket|
-                  passed = system({ "HEALTHCHECK_TEST_REDIS_SOCKET" => socket },
-                                  "bundle", "exec", "rspec", "spec/rack/healthcheck/redis_autodiscovery_live_spec.rb")
-                end
-              end
-            end
-            exit(passed ? 0 : 1)
-          RUBY
       - name: Run Rack, Rails, and Hanami HTTP smoke tests
-        if: matrix.primary && hashFiles('spec/fixtures/framework_smoke/http_examples.rb') != ''
+        if: matrix.primary
         timeout-minutes: 10
-        env:
-          TMPDIR: /tmp
-        run: bundle exec rspec spec/fixtures/framework_smoke/http_examples.rb
+        run: bundle exec rspec spec/integration/http_smoke_examples.rb
       - name: Run RuboCop
         if: matrix.primary
         run: bundle exec rubocop -D
