@@ -2,36 +2,153 @@ name: CI
 
 on:
   push:
+    branches: [master, 'v*.*']
+    tags: ['**']
   pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  ruby:
+    name: Ruby ${{ matrix.ruby }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ruby: '3.4.13'
+            primary: true
+          - ruby: '4.0.10'
+            primary: false
     steps:
-      - uses: actions/checkout@v6
-      - uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          ruby-version: '3.4.12'
+          persist-credentials: false
+      - uses: ruby/setup-ruby@145243922b4465b78e04dd66294782c7de45901f # v1.345.0
+        env:
+          BUNDLE_FROZEN: 'true'
+        with:
+          ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
       - name: Run tests
         run: bundle exec rspec
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./coverage/coverage.json
-          token: ${{ secrets.CODECOV_TOKEN }}
+      # Save the primary suite's report before optional specs can overwrite it.
       - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v6
+        if: ${{ !cancelled() && matrix.primary && (success() || hashFiles('coverage/coverage.json') != '') }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: coverage-report
           path: coverage/
+          if-no-files-found: error
+      # Use Codecov's documented unprotected PR namespace, including same-repo PRs.
+      - name: Upload PR coverage to Codecov without credentials
+        if: matrix.primary && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage/coverage.json
+          disable_search: true
+          # Leave the override empty for external forks so the action uses owner:branch.
+          override_branch: ${{ github.event.pull_request.head.repo.full_name == github.repository && format('pr{0}:{1}', github.event.pull_request.number, github.head_ref) || '' }}
+          override_pr: ${{ github.event.pull_request.number }}
+          version: v11.3.2
+          fail_ci_if_error: true
+      # The discovery fixtures live on the v1.0 release train, not stable master.
+      - name: Install Redis for discovery tests
+        if: matrix.primary && hashFiles('spec/rack/healthcheck/redis_autodiscovery_live_spec.rb', 'spec/fixtures/framework_smoke/http_examples.rb') != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y redis-server
+      - name: Run live Redis discovery specs
+        if: matrix.primary && hashFiles('spec/rack/healthcheck/redis_autodiscovery_live_spec.rb') != ''
+        timeout-minutes: 5
+        run: |
+          bundle exec ruby -r tmpdir -r ./spec/fixtures/framework_smoke/processes - <<'RUBY'
+            passed = false
+            SmokeProcesses.with_signals do
+              Dir.mktmpdir("rh-ci-", "/tmp") do |dir|
+                SmokeProcesses.with_redis(dir) do |socket|
+                  passed = system({ "HEALTHCHECK_TEST_REDIS_SOCKET" => socket },
+                                  "bundle", "exec", "rspec", "spec/rack/healthcheck/redis_autodiscovery_live_spec.rb")
+                end
+              end
+            end
+            exit(passed ? 0 : 1)
+          RUBY
+      - name: Run Rack, Rails, and Hanami HTTP smoke tests
+        if: matrix.primary && hashFiles('spec/fixtures/framework_smoke/http_examples.rb') != ''
+        timeout-minutes: 10
+        env:
+          TMPDIR: /tmp
+        run: bundle exec rspec spec/fixtures/framework_smoke/http_examples.rb
       - name: Run RuboCop
+        if: matrix.primary
         run: bundle exec rubocop -D
       - name: Audit dependencies
+        if: matrix.primary
         run: |
-          gem install bundler-audit
+          gem install bundler-audit --version 0.9.3 --no-document
           bundle-audit check --update
+
+  actionlint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Lint workflows with actionlint 1.7.12
+        run: |
+          archive="$RUNNER_TEMP/actionlint.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 \
+            --output "$archive" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          printf '%s  %s\n' 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 "$archive" | sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+  # Preserve the required GitHub Actions context exactly as named in the ruleset.
+  test:
+    if: ${{ always() }}
+    needs: [ruby, actionlint]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require successful Ruby matrix and workflow lint
+        env:
+          RUBY_RESULT: ${{ needs.ruby.result }}
+          LINT_RESULT: ${{ needs.actionlint.result }}
+        run: |
+          printf 'Ruby matrix: %s; actionlint: %s\n' "$RUBY_RESULT" "$LINT_RESULT"
+          test "$RUBY_RESULT" = success && test "$LINT_RESULT" = success
+
+  coverage:
+    name: Codecov baseline upload
+    # The owner must restrict this environment to trusted release branches.
+    if: github.event_name == 'push' && github.ref_type == 'branch' && github.repository == 'skcc321/rack-healthcheck'
+    needs: test
+    environment: codecov
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: coverage-report
+          path: coverage/
+      - name: Upload coverage to Codecov from a trusted push
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage/coverage.json
+          disable_search: true
+          version: v11.3.2
+          token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+          fail_ci_if_error: true
