@@ -10,7 +10,7 @@ gemspec
 group :development do
   gem "bundler", "~> 4.0", ">= 4.0.24"
   gem "rake", "~> 13.4"
-  gem "rubocop", "~> 1.92", require: false
+  gem "rubocop", "~> 1.93", require: false
 end
 
 group :test do
