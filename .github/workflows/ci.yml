@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [master, 'v*.*']
+    tags: ['**']
   pull_request:
 
 permissions:
@@ -39,20 +40,23 @@ jobs:
         run: bundle exec rspec
       # Save the primary suite's report before optional specs can overwrite it.
       - name: Upload coverage report
-        if: matrix.primary
+        if: ${{ !cancelled() && matrix.primary && (success() || hashFiles('coverage/coverage.json') != '') }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: coverage-report
           path: coverage/
           if-no-files-found: error
-      # Codecov supports tokenless uploads from external forks; same-repo PRs use the artifact.
-      - name: Upload external fork coverage to Codecov without credentials
-        if: matrix.primary && github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork && github.event.pull_request.head.repo.full_name != github.repository
+      # Use Codecov's documented unprotected PR namespace, including same-repo PRs.
+      - name: Upload PR coverage to Codecov without credentials
+        if: matrix.primary && github.event_name == 'pull_request'
         continue-on-error: true
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: coverage/coverage.json
           disable_search: true
+          # Leave the override empty for external forks so the action uses owner:branch.
+          override_branch: ${{ github.event.pull_request.head.repo.full_name == github.repository && format('pr{0}:{1}', github.event.pull_request.number, github.head_ref) || '' }}
+          override_pr: ${{ github.event.pull_request.number }}
           version: v11.3.2
           fail_ci_if_error: true
       # The discovery fixtures live on the v1.0 release train, not stable master.
@@ -127,7 +131,7 @@ jobs:
   coverage:
     name: Codecov baseline upload
     # The owner must restrict this environment to trusted release branches.
-    if: github.event_name == 'push' && github.repository == 'skcc321/rack-healthcheck'
+    if: github.event_name == 'push' && github.ref_type == 'branch' && github.repository == 'skcc321/rack-healthcheck'
     needs: test
     environment: codecov
     runs-on: ubuntu-24.04

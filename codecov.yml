@@ -7,6 +7,7 @@ coverage:
         informational: true
     patch:
       default:
-        # Start with Codecov's documented 100% patch default, advisory only.
-        target: 100%
+        # Compare changed-line coverage to the base report until we have patch history.
+        target: auto
+        threshold: 0%
         informational: true
