@@ -59,9 +59,13 @@ jobs:
           override_pr: ${{ github.event.pull_request.number }}
           version: v11.3.2
           fail_ci_if_error: true
-      # The discovery fixtures live on the v1.0 release train, not stable master.
+      - name: Run stable Rack, Rails, and Hanami HTTP smoke tests
+        if: matrix.primary && hashFiles('spec/fixtures/stable_http/http_examples.rb') != ''
+        timeout-minutes: 10
+        run: bundle exec rspec spec/fixtures/stable_http/http_examples.rb
+      # Install Redis only for the discovery suites on the v1.0 release train.
       - name: Install Redis for discovery tests
-        if: matrix.primary && hashFiles('spec/rack/healthcheck/redis_autodiscovery_live_spec.rb', 'spec/fixtures/framework_smoke/http_examples.rb') != ''
+        if: matrix.primary && hashFiles('spec/rack/healthcheck/redis_autodiscovery_live_spec.rb', 'spec/fixtures/framework_smoke/redis_fixture.rb') != ''
         run: |
           sudo apt-get update
           sudo apt-get install -y redis-server
