@@ -3,58 +3,76 @@ name: Publish gem
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write # pushing tags, releases
-  packages: write # for uploading/deleting packages
+permissions: {}
 
 jobs:
   publish_gem:
-    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and its tag
+      packages: write # push the gem to GitHub Packages
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          fetch-tags: true
-      - uses: ruby/setup-ruby@v1
+          persist-credentials: false
+      - uses: ruby/setup-ruby@145243922b4465b78e04dd66294782c7de45901f # v1.345.0
         with:
-          ruby-version: '3.4.12'
+          ruby-version: '3.4.13'
       - name: Get gem version
         shell: bash
         id: gem-meta
         run: |
-          meta="$(ruby -e "spec = Gem::Specification.load(Dir['*.gemspec'].first); puts [spec.name, spec.version]")"
-          {
-            echo "name=$(echo "$meta" | head -n1)"
-            echo "version=$(echo "$meta" | tail -n1)"
-          } >> "${GITHUB_OUTPUT}"
+          ruby -rrubygems -e 'spec = Gem::Specification.load("rack-healthcheck.gemspec") or abort "Cannot load gemspec"; puts "version=#{spec.version}"' >> "$GITHUB_OUTPUT"
       - name: Check version availability (package registry, git repository and GitHub release)
-        run: |
-          gh api --paginate "${VERSIONS_API}" | jq --arg version_name "$VERSION_NAME" --exit-status '.[] | select(.name == $version_name)' && \
-            echo "::error ::Package version already exists" && exit 1 || true
-          git tag | grep "v${VERSION_NAME}" && echo "::error ::Git tag already exists" && exit 1 || true
-          gh release view "v${VERSION_NAME}" && echo "::error ::GitHub release already exists"  && exit 1 || true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSIONS_API: ${{ github.api_url }}/orgs/${{ github.repository_owner }}/packages/rubygems/${{ github.event.repository.name }}/versions
-          VERSION_NAME: ${{ steps.gem-meta.outputs.version }}
-      # NOTE: it's much faster to use setup-ruby + this inline script than a dockerized action
-      - name: Build and publish gem to GitHub Packages
-        id: publish-gem-github
         shell: bash
         run: |
-          echo "::group::Building the gem"
-          find . -name '*.gemspec' -maxdepth 1 -exec gem build {} \;
-          echo "::endgroup::"
-          echo "::group::Pushing the built gem to GitHub Package Registry"
-          mkdir ~/.gem
-          touch ~/.gem/credentials
-          chmod 600 ~/.gem/credentials
-          echo ":github: Bearer ${{ github.token }}" >> ~/.gem/credentials
-          find . -name '*.gem' -maxdepth 1 -print0 | xargs -0 gem push --key github --host "https://rubygems.pkg.github.com/${{ github.repository_owner }}"
-          rm -rf ~/.gem
-          echo "::endgroup::"
-          echo "::notice ::Published gem ${{ steps.gem-meta.outputs.name }}, version ${{ steps.gem-meta.outputs.version }} to GitHub Packages"
-      - run: gh release create "${RELEASE_TAG}" --target ${{ github.sha }} --generate-notes"${PRE_RELEASE_FLAG}"
+          has_value() {
+            gh api --paginate "$1" | jq -ser --arg key "$2" --arg value "$3" '
+              if length > 0 and all(.[]; type == "array" and all(.[]; type == "object" and (.[$key] | type == "string")))
+              then any(.[][]; .[$key] == $value) | tostring
+              else error("Unexpected paginated response") end'
+          }
+          owner_type=$(gh api "users/$GITHUB_REPOSITORY_OWNER" --jq .type)
+          case "$owner_type" in
+            User) scope="users" ;;
+            Organization) scope="orgs" ;;
+            *) echo "::error ::Unknown package namespace type"; exit 1 ;;
+          esac
+          packages="$scope/$GITHUB_REPOSITORY_OWNER/packages"
+          exists=$(has_value "$packages?package_type=rubygems" name rack-healthcheck)
+          if [[ "$exists" == true ]]; then
+            exists=$(has_value "$packages/rubygems/rack-healthcheck/versions" name "$VERSION_NAME")
+            if [[ "$exists" == true ]]; then
+              echo "::error ::Package version already exists"
+              exit 1
+            fi
+          fi
+          if git ls-remote --exit-code --refs origin "refs/tags/v$VERSION_NAME"; then
+            echo "::error ::Git tag already exists"
+            exit 1
+          else
+            [[ "$?" == 2 ]] || exit 1 # 2 means no matching refs
+          fi
+          exists=$(has_value "repos/$GITHUB_REPOSITORY/releases" tag_name "v$VERSION_NAME")
+          if [[ "$exists" == true ]]; then
+            echo "::error ::GitHub release already exists"
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_NAME: ${{ steps.gem-meta.outputs.version }}
+      - name: Build gem
+        run: gem build rack-healthcheck.gemspec --output "$RUNNER_TEMP/rack-healthcheck.gem"
+      - name: Publish gem to GitHub Packages
+        run: gem push "$RUNNER_TEMP/rack-healthcheck.gem" --host "$GEM_HOST"
+        env:
+          GEM_HOST: https://rubygems.pkg.github.com/${{ github.repository_owner }}
+          GEM_HOST_API_KEY: Bearer ${{ github.token }}
+      - name: Create GitHub release
+        run: |
+          args=(--target "$GITHUB_SHA" --generate-notes)
+          if [[ "$GITHUB_REF_NAME" != master ]]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "${args[@]}"
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: v${{ steps.gem-meta.outputs.version }}
-          PRE_RELEASE_FLAG: ${{ github.ref_name != 'master' && ' --prerelease' || '' }}
