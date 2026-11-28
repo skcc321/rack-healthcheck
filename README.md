@@ -129,7 +129,7 @@ end
 2. Otherwise, a global `config.checks = [...]` (including `[]`) uses only that array and bypasses auto.
 3. Otherwise, the mount uses auto mode. With no recognized integration configured, `checks` is empty.
 
-The legacy manual API still runs the supplied check instances; it does not make those objects safe to share across concurrent requests.
+The manual API runs the supplied check instances. It serializes detailed requests that use manual checks, but does not make those objects safe to use concurrently outside the middleware.
 
 ### Check Options
 
@@ -163,7 +163,9 @@ The default mount path exposes two exact routes:
 
 `GET /healthcheck` returns the current load-balancer state without running dependency checks. `POST` changes the state to `LIVE`, and `DELETE` changes it to `DEAD`. The state is kept in memory per process, so with a multi-process server (Puma cluster, Unicorn) `POST` and `DELETE` only affect the worker that handled the request. These routes are not authenticated; restrict them at the proxy or network level.
 
-`GET /healthcheck/complete` runs configured checks concurrently and returns application metadata and each result:
+`GET /healthcheck/complete` returns application metadata and each check result. Manual checks within a request run concurrently, but detailed requests using manual checks run one at a time per process, even across mounts, so one request cannot overwrite another's results. If a manual request is interrupted, the next manual request still waits for its running checks to finish. Auto discovery uses request-local checks and does not take the manual lock. The lightweight `/healthcheck` route does not take that lock either.
+
+Example response:
 
 ```json
 {

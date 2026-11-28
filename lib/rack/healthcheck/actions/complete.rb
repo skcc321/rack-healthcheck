@@ -24,14 +24,27 @@ module Rack
   module Healthcheck
     module Actions
       class Complete < Base
-        def get(checks: Rack::Healthcheck.configuration.checks, integrations: nil)
-          body = result(integrations ? Discovery.run(integrations) : perform(checks))
-          status = body[:status] ? 200 : 503
+        REQUEST_LOCK = Mutex.new
+        private_constant :REQUEST_LOCK
 
-          [status, { "content-type" => "application/json" }, [body.to_json]]
+        def get(checks: Rack::Healthcheck.configuration.checks, integrations: nil)
+          # Discovery builds request-local checks, so it does not need the manual check lock.
+          return response(Discovery.run(integrations)) if integrations
+
+          # Manual checks share mutable state. Keep the lock through serialization.
+          REQUEST_LOCK.synchronize do
+            perform(checks)
+            response(checks)
+          end
         end
 
         private
+
+        def response(checks)
+          body = result(checks)
+          status = body[:status] ? 200 : 503
+          [status, { "content-type" => "application/json" }, [body.to_json]]
+        end
 
         def result(checks)
           results = []
@@ -50,12 +63,27 @@ module Rack
         end
 
         def perform(checks)
+          # Do not let an asynchronous timeout interrupt worker registration or cleanup.
+          Thread.handle_interrupt(Object => :never) { perform_checks(checks) }
+        end
+
+        def perform_checks(checks)
+          started = 0
+          finished = Queue.new
           threads = checks.map do |check|
-            Thread.new { check.run }
+            thread = Thread.new do
+              check.run
+            ensure
+              finished << true
+            end
+            started += 1
+            thread
           end
 
-          threads.each(&:join)
-          checks
+          Thread.handle_interrupt(Object => :immediate) { threads.each(&:join) }
+        ensure
+          # Wait for outstanding checks without re-raising their errors during cleanup.
+          started.times { finished.pop }
         end
       end
     end
